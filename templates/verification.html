@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <title>{{subject}}</title>
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f9f9f9;
+          margin: 0;
+          padding: 20px;
+        }
+
+        .email-container {
+          background-color: #ffffff;
+          margin: 20px auto;
+          padding: 30px;
+          max-width: 600px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e0e0e0;
+        }
+
+        .logo-text-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+          }
+
+          .logo {
+            width: 80px; /* Adjust size as needed */
+            height: 80px;
+          }
+
+          .logo-text {
+            font-size: 40px;
+            font-weight: bold;
+            color: #333;
+          }
+
+        h1 {
+          color: #2e3137;
+          font-size: 24px;
+          margin-top: 0;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+
+        p {
+          font-size: 16px;
+          color: #525760;
+          line-height: 1.6;
+          margin-bottom: 15px;
+        }
+
+        .verification-box {
+          background-color: #f0f8ff; /* Light blue background */
+          border: 1px solid #add8e6; /* Light blue border */
+          border-radius: 4px;
+          padding: 20px;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+
+        .verification-code {
+          font-size: 24px;
+          font-weight: bold;
+          color: #007bff; /* Blue color for the code */
+          letter-spacing: 6px;
+        }
+
+        .code-explanation {
+          font-size: 14px;
+          color: #777777;
+          margin-top: 10px;
+        }
+
+        .next-steps-title {
+          font-size: 18px;
+          color: #2e3137;
+          margin-bottom: 10px;
+        }
+
+        ol {
+          padding-left: 20px;
+          margin-top: 0;
+          margin-bottom: 20px;
+        }
+
+        li {
+          margin-bottom: 10px;
+          font-size: 16px;
+          color: #525760;
+          line-height: 1.6;
+        }
+
+        .footer {
+          font-size: 14px;
+          color: #777777;
+          margin-top: 20px;
+          text-align: center;
+        }
+
+        .footer a {
+          color: #007bff;
+          text-decoration: none;
+        }
+
+        .footer a:hover {
+          text-decoration: underline;
+        }
+
+        .thank-you {
+          font-weight: bold;
+          font-size: 16px;
+          color: #525760;
+          margin-top: 20px;
+          text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="email-container">
+    <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 20px;">
+      <tr>
+        <td align="center" style="padding-right: 10px;">
+          <img src="https://kitecareer.com/CraveCall.png" alt="CraveCall.ai Logo" width="60" style="display: block;">
+        </td>
+        <td align="center" style="font-size: 32px; font-weight: bold; color: #333; font-family: Arial, sans-serif;">
+          Tamil Learning app
+        </td>
+      </tr>
+    </table>
+
+    <p><b>Hi {{first_name}},</b></p>
+    <p>
+        Thanks for getting started with Tamil learning! You're one step closer to learning Tamil.
+    </p>
+    <p>
+        To ensure your account is secure, please use the following verification code to confirm your email address.
+    </p>
+    <div class="verification-box">
+        <span class="verification-code">{{code}}</span>
+        <p class="code-explanation">This code will expire shortly. Please enter it in the application.</p>
+    </div>
+    <p class="next-steps-title">Next Steps:</p>
+    <ol>
+        <li>Enter the verification code above in the application.</li>
+        <li>Start exploring the smart features designed for your restaurant.</li>
+    </ol>
+    <p>
+        If you didn't request this verification, you can safely ignore this email. Your account will not be activated without the correct code.
+    </p>
+    <p>
+        For any questions or assistance, please visit our <a href="support@matrimony.ai">Help Center</a> or contact us at <a href="mailto:support@matrimony.ai">support@matrimony.ai</a>.
+    </p>
+    <p class="thank-you">
+        Thank you,<br/>
+        The Tamil Learning Team 🍽️🤖
+    </p>
+    <div class="footer">
+        <p>&copy; 2025 Tamil Learn. All rights reserved.</p>
+        <p><a href="support@matrimony.ai">Privacy Policy</a> | <a href="support@matrimony.ai">Terms of Service</a></p>
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   id="svg2858"
+   version="1.1"
+   inkscape:version="0.47 r22583"
+   width="200"
+   height="154"
+   sodipodi:docname="Tamil-alphabet-அஅ.svg">
+  <metadata
+     id="metadata2864">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs2862">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       id="perspective2866" />
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="640"
+     inkscape:window-height="481"
+     id="namedview2860"
+     showgrid="false"
+     inkscape:zoom="1.5324675"
+     inkscape:cx="99.999998"
+     inkscape:cy="76.999998"
+     inkscape:window-x="319"
+     inkscape:window-y="311"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg2858" />
+  <path
+     style="fill:#000000"
+     d="M 59.312299,135.25745 C 36.473039,131.42408 15.030405,117.90388 8.0651516,102.94464 5.0333686,96.433301 4.8114916,88.565551 7.5637756,85.165871 l 1.911222,-2.36079 64.5887814,-0.27822 64.588771,-0.27822 -0.0174,-8.22178 c -0.0571,-27.050048 -12.7455,-44.92892 -35.72367,-50.337254 -7.369261,-1.734492 -17.754311,-1.409541 -24.758921,0.774714 l -4,1.247324 6.60166,0.614769 c 4.52383,0.421273 8.04169,1.458677 11.17687,3.296013 8.258631,4.839883 11.204381,10.757586 10.541001,21.175751 -0.82234,12.91465 -9.719631,21.133292 -24.029871,22.196983 -9.57212,0.711502 -14.88144,-0.811717 -20.32772,-5.831922 -5.85241,-5.394557 -7.79394,-10.729122 -7.29609,-20.046734 0.47046,-8.80495 3.35455,-15.192856 9.35784,-20.726496 10.22194,-9.422252 20.32919,-12.638972 36.97631,-11.768022 19.364341,1.013113 31.667961,5.839681 42.510221,16.676271 11.43085,11.424869 16.9461,25.154292 16.97499,42.256827 l 0.0148,8.749996 9.5,0 9.5,0 0,-32.999996 0,-33 8.5,0 8.5,0 0,60 0,59.999995 -8.48087,0 -8.48087,0 -0.26913,-22.25 -0.26913,-22.249999 -10.02773,-0.28252 -10.02773,-0.28253 -3.92292,8.782529 c -8.79002,19.67881 -28.1975,31.78682 -56.495381,35.24652 -9.71988,1.18835 -28.25329,1.18226 -35.36649,-0.0116 z m 37.97849,-9.97485 c 10.452821,-2.65627 23.188761,-8.8551 28.777381,-14.0065 2.49203,-2.29708 5.89298,-6.90214 7.55767,-10.23348 5.39099,-10.788329 11.26048,-9.737539 -54.391501,-9.737539 -31.58001,0 -58.13001,0.27315 -59,0.60699 -1.98317,0.76102 -2.09823,6.22123 -0.22553,10.703219 3.09089,7.39755 19.24775,18.0125 33.68266,22.1293 13.8286,3.94387 29.43869,4.1365 43.59932,0.53801 z m -19.6999,-63.80478 c 8.91074,-4.77888 9.34474,-17.980699 0.76312,-23.213219 -10.88835,-6.639012 -22.80146,5.59811 -17.1153,17.580794 2.10083,4.427185 5.99229,6.927539 11.42945,7.343689 0.83358,0.0638 3.04881,-0.706268 4.92273,-1.711264 z"
+     id="path2890" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Layer" />
+  <g
+     inkscape:groupmode="layer"
+     id="layer3"
+     inkscape:label="Layer#1" />
+</svg>
