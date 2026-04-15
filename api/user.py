@@ -13,48 +13,6 @@ router = APIRouter()
 security = HTTPBearer()
 
 
-# @router.get('/api/user')
-# async def get_user(user: dict =Depends(get_current_user)):
-    
-#     # try:        
-#     #     user_id = ObjectId(user['user_id'])
-#     # except Exception:
-#     #     raise HTTPException(
-#     #         status_code=status.HTTP_400_BAD_REQUEST,
-#     #         detail='Invalid user id'
-#     #     )
-#     # result = await profile_collection.find_one({'owner_id': user['user_id'], 'role': 'user'})
-#     # if result is None:
-#     #     raise HTTPException(
-#     #         status_code=status.HTTP_404_NOT_FOUND,
-#     #         detail="User not found"
-#     #     )
-#     # print('six')
-#     # return {
-#     #     'name': result.get('name'),
-#     #     'progress': result.get('progress')
-#     # }
-#     user = await profile_collection.find_one({'owner_id': user['user_id']})
-#     if user is None:
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND,
-#             detail="Learner not found"
-#         )
-
-#     lessons=[]
-#     async for doc in lesson_collection.find():
-#         lessons.append({
-#             'lesson_id': str(doc['_id']),
-#             'lessons': doc.get('lesson_name'),
-#             'modules_count': doc.get('modules_count'),
-#             # 'message': 'hello'
-#         })
-#     return {
-#         'name': user.get('name'),
-#         'progress': user.get('progress'),
-#         'lessons': lessons
-#     }
-
 # adding learner
 @router.post('/api/user/add-learner')
 async def add_learner(
@@ -152,31 +110,3 @@ async def delete_learner(
         {'_id': ObjectId(learner_id)}
     )
     return {'message': 'learner deleted'}
-
-
-# # User learning code 
-# @router.get('/api/learner/{lesson_id}')
-# async def get_lesson(lesson_id: str, learner: dict = Depends(get_current_learner)):
-#     lesson = await lesson_collection.find_one({'_id': ObjectId(lesson_id)})
-
-#     result = await profile_collection.find_one_and_update(
-#         {'_id': ObjectId(learner['learner_id'])},
-#         {
-#             '$addToSet': {'lessons_attended': lesson['lesson_name']}
-#         }
-#     )
-#     print(str(result['_id']))
-#     progress = await calculate_progress(len(result['lessons_attended'])-1)
-
-#     await profile_collection.update_one(
-#         {'_id': ObjectId(learner['learner_id'])},
-#         {
-#             '$set': {'progress': progress}
-#         }
-#     )
-#     print('hello')
-
-#     return {
-#         'lessons': lesson['lesson_name'],
-#         # 'attended by the user': learner.get('lessons_attended')
-#     }

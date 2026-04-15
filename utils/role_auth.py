@@ -243,7 +243,6 @@ async def get_current_user_with_roles(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
-        
         if user.get('role') not in allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

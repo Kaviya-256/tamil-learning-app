@@ -97,7 +97,7 @@ async def lesson_modules(
 ):    
     return [
         {'module_name': doc.get('module_name')}
-    async for doc in module_collection.find({'lesson_id': lesson_id})]
+    async for doc in module_collection.find({'lesson_id': ObjectId(lesson_id)})]
 
 
 # To add modules to an existing lesson
@@ -143,7 +143,7 @@ async def add_modules(
 @router.post('/api/admin/asset/upload-asset')
 async def add_new_content(
     asset_name:str,
-    image: UploadFile=File(...),
+    # image: UploadFile=File(...),
     audio: UploadFile=File(...),
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
@@ -154,21 +154,21 @@ async def add_new_content(
             detail=f"Asset alreay exist for {asset_name}"
         )
     
-    image_name=f'{asset_name}_{uuid.uuid4()}'
-    audio_name=f'{audio.filename}_{uuid.uuid4()}'
+    # image_name=f'{asset_name}_{uuid.uuid4()}'
+    audio_name=f'{asset_name}_{uuid.uuid4()}'
 
-    image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
+    # image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
     audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)
 
-    with open(image_path,'wb') as f:
-        f.write(await image.read())
+    # with open(image_path,'wb') as f:
+    #     f.write(await image.read())
     
     with open(audio_path,'wb') as f:
         f.write(await audio.read())
     
     data={
         'asset_name': asset_name,
-        'image_path': image_path,
+        # 'image_path': image_path,
         'audio_path': audio_path
     }
     
