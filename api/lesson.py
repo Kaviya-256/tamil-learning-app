@@ -33,7 +33,7 @@ async def get_lessons(user = Depends(require_roles(['user','learner'], [user_col
         lessons.append({
             'lesson_id': str(doc['_id']),
             'lesson_name': doc.get('lesson_name'),
-            'modules_count': doc.get('modules_count'),
+            # 'modules_count': doc.get('modules_count'),
             'modules': [{
                 'module_id': str(module['_id']),
                 'module_name': module.get('module_name')

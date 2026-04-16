@@ -108,6 +108,14 @@ async def add_modules(
     
     data = module.model_dump()
 
+    existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': ObjectId(lesson_id)})
+
+    if existing_module:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Module already exist in this lesson"
+        )
+
     asset = await asset_collection.find_one({'asset_name': module.module_name})
     if asset is None:
         raise HTTPException(

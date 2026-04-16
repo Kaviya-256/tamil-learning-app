@@ -57,7 +57,8 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'id': str(doc['_id']),
             'username': doc.get('username'),
             'name': doc.get('name'),
-            'age': doc.get('age'), 
+            'age': doc.get('age'),
+            'grade': doc.get('grade'),
             'progress': doc.get('progress')
         }
         async for doc in profile_collection.find({'owner_id': user_id})
@@ -76,6 +77,7 @@ async def get_learner(
         'username': data['username'],
         'name': data['name'],
         'age': data['age'],
+        'grade': data['grade'],
         'progress': data['progress']
     }
 
