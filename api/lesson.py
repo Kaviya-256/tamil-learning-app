@@ -3,10 +3,11 @@ from fastapi.security import HTTPBearer
 from bson import ObjectId
 from fastapi.responses import FileResponse
 import os
+from pymongo import ReturnDocument
 
 from database.mongo import module_collection, profile_collection, lesson_collection, user_collection
 from utils.role_auth import require_roles
-# from utils.progress import calculate_progress
+from utils.progress import calculate_progress
 
 router = APIRouter()
 security = HTTPBearer()
@@ -55,25 +56,6 @@ async def get_lesson_modules(
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
         user['id'] = str(user['_id'])
 
-    # lesson = await lesson_collection.find_one({'_id': ObjectId(lesson_id)})
-
-    # result = await profile_collection.find_one_and_update(
-    #     {'_id': ObjectId(user['id'])},
-    #     {
-    #         '$addToSet': {'lessons_attended': lesson['lesson_name']}
-    #     }
-    # )
-    # print(str(result['_id']))
-    # progress = await calculate_progress(len(result['lessons_attended'])-1)
-
-    # await profile_collection.update_one(
-    #     {'_id': ObjectId(user['id'])},
-    #     {
-    #         '$set': {'progress': progress}
-    #     }
-    # )
-    # print('hello')
-
     return [{
         'module_id': str(doc['_id']),
         'module_name': doc.get('module_name')
@@ -108,6 +90,23 @@ async def get_module_data(
         'module_name': module.get('module_name'),
         'audio': f"/api/media/audio/{module_id}"
     }
+
+    result = await profile_collection.find_one_and_update(
+        {'_id': ObjectId(user['id'])},
+        {
+            '$addToSet': {'lessons_attended': module['_id']}
+        },
+        return_document=ReturnDocument.AFTER
+    )
+    progress = await calculate_progress(len(result.get('lessons_attended',[])))
+
+    await profile_collection.update_one(
+        {'_id': ObjectId(user['id'])},
+        {
+            '$set': {'progress': progress}
+        }
+    )
+    print('hello')
     return data
 
 # getting audio

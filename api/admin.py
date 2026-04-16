@@ -6,7 +6,7 @@ from bson import ObjectId
 # from fastapi.responses import FileResponse
 # from fastapi.security import HTTPBearer
 
-from schema import ModuleSchema
+from schema import ModuleSchema, LessonSchema
 from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection
 from utils.role_auth import require_roles
 
@@ -76,12 +76,11 @@ async def list_lessons(admin = Depends(require_roles(['admin'], [user_collection
 # To add  new lessons
 @router.post('/api/admin/add-lesson')
 async def add_lesson(
-    lesson_name: str, 
+    lesson: LessonSchema,
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
-    
     data = {
-        'lesson_name': lesson_name,
+        'lesson_name': lesson.lesson_name,
         'modules_count': 0
     }
     await lesson_collection.insert_one(data)
@@ -138,12 +137,36 @@ async def add_modules(
     return {
         'message': 'Module added to lesson'
     }
+@router.put('/api/admin/{lesson_id}/update-lesson')
+async def update_lesson(lesson: LessonSchema, lesson_id: str):
+    data = await lesson_collection.find_one_and_update(
+        {'_id': ObjectId(lesson_id)},
+        {
+            '$set': {'lesson_name': lesson.lesson_name}
+        }
+    )
+    return {'message': 'lesson updated successfully'}
+
+# @router.put('/api/admin/lesson/{module_id}/update-module')
+# async def update_module(module_id: str, module: ModuleSchema)
+
+
+@router.delete('/api/admin/{lesson_id}/delete-lesson')
+async def delete_lesson(lesson_id: str):
+    await module_collection.delete_many({'lesson_id': ObjectId(lesson_id)})
+    await lesson_collection.delete_one({'_id': ObjectId(lesson_id)})
+    return {'message': 'lesson deleted'}
+
+@router.delete('/api/admin/lesson/{module_id}/delete-module')
+async def delete_module(module_id: str):
+    await module_collection.delete_one({'_id': ObjectId(module_id)})
+    return {'message': 'Module deleted'}
 
 # Uploading Asset
 @router.post('/api/admin/asset/upload-asset')
 async def add_new_content(
-    asset_name:str,
-    # image: UploadFile=File(...),
+    asset_name: str,
+    image: UploadFile=File(...),
     audio: UploadFile=File(...),
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
@@ -154,21 +177,21 @@ async def add_new_content(
             detail=f"Asset alreay exist for {asset_name}"
         )
     
-    # image_name=f'{asset_name}_{uuid.uuid4()}'
+    image_name=f'{asset_name}_{uuid.uuid4()}'
     audio_name=f'{asset_name}_{uuid.uuid4()}'
 
-    # image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
+    image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
     audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)
 
-    # with open(image_path,'wb') as f:
-    #     f.write(await image.read())
+    with open(image_path,'wb') as f:
+        f.write(await image.read())
     
     with open(audio_path,'wb') as f:
         f.write(await audio.read())
     
     data={
         'asset_name': asset_name,
-        # 'image_path': image_path,
+        'image_path': image_path,
         'audio_path': audio_path
     }
     
@@ -177,6 +200,7 @@ async def add_new_content(
     return {
         'message':'asset added successfully'
     }
+
 
 # displaying assets
 # @router.get('/api/admin/asset')

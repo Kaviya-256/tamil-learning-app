@@ -29,21 +29,12 @@ class SignupSchema(BaseModel):
     email: EmailStr
     password: str
     passwordConfirm: str
+    country: str
 
 class ResetPasswordSchema(EmailSchema):
     password: str
-    passwordConfirm: str
+    passwordConfirm: str 
 
-# class AssetSchema(BaseModel):
-#     asset_name: str
-#     image_path: str
-#     audio_path: str
-
-# class ProfileSchema(BaseModel):
-#     # name: str
-#     # email: EmailStr
-#     city: str
-#     country: str
 
 class LearnerSchema(BaseModel):
     username: str
@@ -60,7 +51,8 @@ class LearnerSchema(BaseModel):
                 "Username only contain letters, numbers and underscore"
             )
         return value
+class LessonSchema(BaseModel):
+    lesson_name: str
 
 class ModuleSchema(BaseModel):
     module_name: str
-    # audio: UploadFile = File(...)

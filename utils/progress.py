@@ -1,11 +1,9 @@
-from database.mongo import lesson_collection
+from database.mongo import module_collection
 
 async def calculate_progress(count: int):
-    lesson_count =await lesson_collection.count_documents({})
-    print(lesson_count)
-    print('count',count)
+    module_count =await module_collection.count_documents({})
 
-    progress =int( count / lesson_count * 100 )
-    print(progress)
+    if module_count==0:
+        return 0
 
-    return progress
+    return int( count / module_count * 100 )
