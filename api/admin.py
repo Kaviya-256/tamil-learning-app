@@ -1,17 +1,16 @@
 # admin.py
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form, Depends
+from fastapi import APIRouter, HTTPException, status, UploadFile, File, Depends
 import uuid
 import os
 from bson import ObjectId
-# from fastapi.responses import FileResponse
-# from fastapi.security import HTTPBearer
+import re
+from typing import Optional
 
 from schema import ModuleSchema, LessonSchema
 from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection
 from utils.role_auth import require_roles
 
 router = APIRouter()
-# security = HTTPBearer()
 
 UPLOAD_DIR_IMAGE = 'asset/image'
 UPLOAD_DIR_AUDIO = 'asset/audio'
@@ -19,11 +18,14 @@ UPLOAD_DIR_AUDIO = 'asset/audio'
 # Get admin
 @router.get('/api/admin')
 async def get_admin(admin = Depends(require_roles(['admin'], [user_collection]))):
-    # record = await user_collection.find_one({'role': 'admin'})
 
+    asset_count = await asset_collection.count_documents({})
+    lesson_count = await lesson_collection.count_documents({})
     return {
         'name': admin['name'],
-        'role': admin['role']
+        'role': admin['role'],
+        'asset_count': asset_count,
+        'lesson_count': lesson_count
     }
 
 # List of users: Dashboard
@@ -95,7 +97,9 @@ async def lesson_modules(
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):    
     return [
-        {'module_name': doc.get('module_name')}
+        {
+            'module_id': str(doc['_id']),
+            'module_name': doc.get('module_name')}
     async for doc in module_collection.find({'lesson_id': ObjectId(lesson_id)})]
 
 
@@ -145,6 +149,8 @@ async def add_modules(
     return {
         'message': 'Module added to lesson'
     }
+
+# Update lesson name
 @router.put('/api/admin/{lesson_id}/update-lesson')
 async def update_lesson(lesson: LessonSchema, lesson_id: str):
     data = await lesson_collection.find_one_and_update(
@@ -155,16 +161,15 @@ async def update_lesson(lesson: LessonSchema, lesson_id: str):
     )
     return {'message': 'lesson updated successfully'}
 
-# @router.put('/api/admin/lesson/{module_id}/update-module')
-# async def update_module(module_id: str, module: ModuleSchema)
 
-
+# Deleting lesson
 @router.delete('/api/admin/{lesson_id}/delete-lesson')
 async def delete_lesson(lesson_id: str):
     await module_collection.delete_many({'lesson_id': ObjectId(lesson_id)})
     await lesson_collection.delete_one({'_id': ObjectId(lesson_id)})
     return {'message': 'lesson deleted'}
 
+# Deleting Module 
 @router.delete('/api/admin/lesson/{module_id}/delete-module')
 async def delete_module(module_id: str):
     await module_collection.delete_one({'_id': ObjectId(module_id)})
@@ -174,7 +179,7 @@ async def delete_module(module_id: str):
 @router.post('/api/admin/asset/upload-asset')
 async def add_new_content(
     asset_name: str,
-    image: UploadFile=File(...),
+    image: Optional[UploadFile]=File(None),
     audio: UploadFile=File(...),
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
@@ -184,24 +189,27 @@ async def add_new_content(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Asset alreay exist for {asset_name}"
         )
-    
-    image_name=f'{asset_name}_{uuid.uuid4()}'
+
     audio_name=f'{asset_name}_{uuid.uuid4()}'
-
-    image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
-    audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)
-
-    with open(image_path,'wb') as f:
-        f.write(await image.read())
+    audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)    
     
     with open(audio_path,'wb') as f:
         f.write(await audio.read())
     
     data={
         'asset_name': asset_name,
-        'image_path': image_path,
         'audio_path': audio_path
     }
+    
+    if image:
+        image_name=f'{asset_name}_{uuid.uuid4()}'
+        image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
+        with open(image_path,'wb') as f:
+            f.write(await image.read())
+        
+        data.update({
+            'image_path': image_path
+        })    
     
     await asset_collection.insert_one(data)
     
@@ -209,6 +217,24 @@ async def add_new_content(
         'message':'asset added successfully'
     }
 
+# Search asset
+@router.get('/api/admin/search-asset')
+async def search_asset(q: str='', admin = Depends(require_roles(['admin'], [user_collection]))):
+    if not q:
+        return {'results': []}
+    
+    escaped=re.escape(q)
+
+    cursor = asset_collection.find(
+        {'asset_name': {'$regex': f'^{escaped}'}},
+        {'asset_name':1, '_id':0}
+    ).collation({
+        'locale':'ta',
+        'strength':1
+    }).limit(20)
+
+    results=await cursor.to_list(length=20)
+    return {'results': [r['asset_name'] for r in results]}
 
 # displaying assets
 # @router.get('/api/admin/asset')
@@ -230,42 +256,3 @@ async def add_new_content(
 # def get_audio(file_name: str, admin: dict = Depends(get_current_admin)):
 #     print('2')
 #     return FileResponse(f'{file_name}')
-
-
-@router.post('/api/admin/asset/upload-audio')
-async def temporary_api_for_audio_upload(
-    asset_name: str,
-    # image: UploadFile=File(...),
-    audio: UploadFile=File(...),
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):
-    asset = await asset_collection.find_one({'asset_name': asset_name})
-    if asset:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Asset alreay exist for {asset_name}"
-        )
-    
-    # image_name=f'{asset_name}_{uuid.uuid4()}'
-    audio_name=f'{asset_name}_{uuid.uuid4()}'
-
-    # image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
-    audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)
-
-    # with open(image_path,'wb') as f:
-    #     f.write(await image.read())
-    
-    with open(audio_path,'wb') as f:
-        f.write(await audio.read())
-    
-    data={
-        'asset_name': asset_name,
-        # 'image_path': image_path,
-        'audio_path': audio_path
-    }
-    
-    await asset_collection.insert_one(data)
-    
-    return {
-        'message':'asset added successfully'
-    }

@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from bson import ObjectId
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from fastapi.security import HTTPBearer
 
 from schema import LearnerSchema
-from database.mongo import profile_collection, lesson_collection, user_collection
+from database.mongo import profile_collection, user_collection
 from utils.role_auth import require_roles
 from utils.auth_utils import hash_password
 

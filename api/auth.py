@@ -1,5 +1,5 @@
 # auth.py
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from random import randint
 
