@@ -230,3 +230,42 @@ async def add_new_content(
 # def get_audio(file_name: str, admin: dict = Depends(get_current_admin)):
 #     print('2')
 #     return FileResponse(f'{file_name}')
+
+
+@router.post('/api/admin/asset/upload-audio')
+async def temporary_api_for_audio_upload(
+    asset_name: str,
+    # image: UploadFile=File(...),
+    audio: UploadFile=File(...),
+    admin = Depends(require_roles(['admin'], [user_collection]))
+):
+    asset = await asset_collection.find_one({'asset_name': asset_name})
+    if asset:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Asset alreay exist for {asset_name}"
+        )
+    
+    # image_name=f'{asset_name}_{uuid.uuid4()}'
+    audio_name=f'{asset_name}_{uuid.uuid4()}'
+
+    # image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
+    audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)
+
+    # with open(image_path,'wb') as f:
+    #     f.write(await image.read())
+    
+    with open(audio_path,'wb') as f:
+        f.write(await audio.read())
+    
+    data={
+        'asset_name': asset_name,
+        # 'image_path': image_path,
+        'audio_path': audio_path
+    }
+    
+    await asset_collection.insert_one(data)
+    
+    return {
+        'message':'asset added successfully'
+    }
