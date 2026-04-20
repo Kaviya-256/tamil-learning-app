@@ -1,8 +1,7 @@
 # schema.py
-from pydantic import BaseModel, EmailStr, model_validator, field_validator
+from pydantic import BaseModel, EmailStr, model_validator, field_validator, Field
 from typing import Optional
 import re
-from fastapi import UploadFile, File
 
 
 class LoginSchema(BaseModel):
@@ -56,3 +55,7 @@ class LessonSchema(BaseModel):
 
 class ModuleSchema(BaseModel):
     module_name: str
+
+class FeedbackSchema(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comments: Optional[str] = None

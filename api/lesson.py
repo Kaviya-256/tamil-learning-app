@@ -2,16 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 from bson import ObjectId
 from fastapi.responses import FileResponse
-import os
 from pymongo import ReturnDocument
+from datetime import datetime, timezone
 
-from database.mongo import module_collection, profile_collection, lesson_collection, user_collection
+from database.mongo import module_collection, profile_collection, lesson_collection, user_collection, feedback_collection
 from utils.role_auth import require_roles
 from utils.progress import calculate_progress
+from schema import FeedbackSchema
 
 router = APIRouter()
 security = HTTPBearer()
 
+# List of lessons with user progress
 @router.get('/api/lessons')
 async def get_lessons(user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))):
 
@@ -46,7 +48,7 @@ async def get_lessons(user = Depends(require_roles(['user','learner'], [user_col
         'lessons': lessons
     }
 
-
+# List of modules
 @router.get('/api/lesson/{lesson_id}')
 async def get_lesson_modules(
     lesson_id: str,
@@ -62,6 +64,7 @@ async def get_lesson_modules(
     } async for doc in module_collection.find({'lesson_id': ObjectId(lesson_id)})]
 
 
+# Module info
 @router.get('/api/lesson/module/{module_id}')
 async def get_module_data(
     module_id: str,
@@ -106,7 +109,7 @@ async def get_module_data(
             '$set': {'progress': progress}
         }
     )
-    print('hello')
+    
     return data
 
 # getting audio
@@ -120,3 +123,29 @@ async def get_audio(module_id: str):
             detail="Module not found"
         )
     return FileResponse(module.get('audio_path'), media_type="audio/mpeg")
+
+# Feedback
+@router.post('/api/feedback')
+async def collect_feedback(
+    feedback: FeedbackSchema,
+    user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
+):
+    user_id = user.get('id')
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user"
+        )
+    
+    result = await feedback_collection.update_one(
+        {'user_id': user['id']},
+        {
+            '$set': {
+                'rating': feedback.rating,
+                'comments': feedback.comments,
+                'updated_at': datetime.now(timezone.utc)
+            }
+        },
+        upsert=True
+    )
+    return {'message': 'feedback added successfully'}

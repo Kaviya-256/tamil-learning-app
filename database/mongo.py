@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI")
-print("Mongodb uri: ",MONGO_URI)
 
 DATABASE_NAME = "tamil-app"
 USER_COLLECTION = 'users'
@@ -16,6 +15,7 @@ PROFILE_COLLECTION = 'profiles'
 ASSET_COLLECTION = 'assets'
 LESSON_COLLECTION = 'lessons'
 MODULE_COLLECTION = 'modules'
+FEEDBACK_COLLECTION = 'feedbacks'
 
 
 client = AsyncIOMotorClient(MONGO_URI)
@@ -27,3 +27,4 @@ profile_collection = db[PROFILE_COLLECTION]
 asset_collection = db[ASSET_COLLECTION]
 lesson_collection = db[LESSON_COLLECTION]
 module_collection = db[MODULE_COLLECTION]
+feedback_collection = db[FEEDBACK_COLLECTION]
