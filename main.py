@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://darkcyan-dun2.hostingersite.com","http://localhost:5173"],
+    allow_origins=["https://darkcyan-dunlin-203492.hostingersite.com","http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
