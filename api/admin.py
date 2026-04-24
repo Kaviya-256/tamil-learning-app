@@ -7,7 +7,7 @@ import re
 from typing import Optional
 
 from schema import ModuleSchema, LessonSchema
-from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection
+from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection, feedback_collection
 from utils.role_auth import require_roles
 
 router = APIRouter()
@@ -235,6 +235,25 @@ async def search_asset(q: str='', admin = Depends(require_roles(['admin'], [user
 
     results=await cursor.to_list(length=20)
     return {'results': [r['asset_name'] for r in results]}
+
+# Getting feedback
+@router.get('/api/admin/feedback')
+async def get_feedback(admin = Depends(require_roles(['admin'],[user_collection]))):
+    feedback=[]
+
+    async for doc in feedback_collection.find({}):
+        learner = await profile_collection.find_one({'_id': ObjectId(doc.get('user_id'))})
+        if learner is None:
+            continue
+
+        feedback.append({
+            'id': str(doc['_id']),
+            'name': learner['name'],
+            'rating': doc.get('rating'),
+            'comments': doc.get('comments')
+        })
+    
+    return feedback
 
 # displaying assets
 # @router.get('/api/admin/asset')
