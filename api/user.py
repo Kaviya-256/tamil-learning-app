@@ -3,7 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from fastapi.security import HTTPBearer
 
-from schema import LearnerSchema
+from schema import LearnerSchema, ProfileSchema
 from database.mongo import profile_collection, user_collection
 from utils.role_auth import require_roles
 from utils.auth_utils import hash_password
@@ -112,3 +112,41 @@ async def delete_learner(
         {'_id': ObjectId(learner_id)}
     )
     return {'message': 'learner deleted'}
+
+# User Profile Data
+@router.get('/api/user/profile')
+async def get_profile(user = Depends(require_roles(['user'], [user_collection]))):
+    profile = await user_collection.find_one({'_id': ObjectId(user['id'])})
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User not exist"
+        )
+    return {
+        'name': profile.get('name'),
+        'city': profile.get('city'),
+        'state': profile.get('state'),
+        'country': profile.get('country'),
+        'valid_age': profile.get('valid_age')
+    }
+
+# User profile management
+@router.post('/api/user/profile-update')
+async def manage_profile(profile: ProfileSchema, user = Depends(require_roles(['user'], [user_collection]))):
+    user_data = await user_collection.find_one({'_id': ObjectId(user['id'])})
+
+    if user_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    await user_collection.update_one(
+        {'_id': ObjectId(user['id'])},
+        {
+            '$set': profile.model_dump()
+        }
+    )
+
+    return {'message': 'Profile updated'}
+

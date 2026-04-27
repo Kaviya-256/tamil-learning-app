@@ -59,3 +59,10 @@ class ModuleSchema(BaseModel):
 class FeedbackSchema(BaseModel):
     rating: int = Field(..., ge=1, le=5)
     comments: Optional[str] = None
+
+class ProfileSchema(BaseModel):
+    name: str
+    city: str
+    state: str
+    country: str
+    valid_age: bool

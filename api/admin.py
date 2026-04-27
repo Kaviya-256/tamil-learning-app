@@ -44,6 +44,7 @@ async def admin_dashboard(admin = Depends(require_roles(['admin'], [user_collect
             })
     return user
 
+# List of Learners
 @router.get('/api/admin/{user_id}/learners')
 async def get_users_learners(
     user_id: str, 
@@ -152,7 +153,10 @@ async def add_modules(
 
 # Update lesson name
 @router.put('/api/admin/{lesson_id}/update-lesson')
-async def update_lesson(lesson: LessonSchema, lesson_id: str):
+async def update_lesson(
+    lesson: LessonSchema, lesson_id: str,
+    admin = Depends(require_roles(['admin'], [user_collection]))
+):
     data = await lesson_collection.find_one_and_update(
         {'_id': ObjectId(lesson_id)},
         {
@@ -164,14 +168,14 @@ async def update_lesson(lesson: LessonSchema, lesson_id: str):
 
 # Deleting lesson
 @router.delete('/api/admin/{lesson_id}/delete-lesson')
-async def delete_lesson(lesson_id: str):
+async def delete_lesson(lesson_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
     await module_collection.delete_many({'lesson_id': ObjectId(lesson_id)})
     await lesson_collection.delete_one({'_id': ObjectId(lesson_id)})
     return {'message': 'lesson deleted'}
 
 # Deleting Module 
 @router.delete('/api/admin/lesson/{module_id}/delete-module')
-async def delete_module(module_id: str):
+async def delete_module(module_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
     await module_collection.delete_one({'_id': ObjectId(module_id)})
     return {'message': 'Module deleted'}
 
@@ -238,7 +242,7 @@ async def search_asset(q: str='', admin = Depends(require_roles(['admin'], [user
 
 # Getting feedback
 @router.get('/api/admin/feedback')
-async def get_feedback(admin = Depends(require_roles(['admin'],[user_collection]))):
+async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection]))):
     feedback=[]
 
     async for doc in feedback_collection.find({}):
@@ -254,24 +258,3 @@ async def get_feedback(admin = Depends(require_roles(['admin'],[user_collection]
         })
     
     return feedback
-
-# displaying assets
-# @router.get('/api/admin/asset')
-# async def get_assets(admin: dict = Depends(get_current_admin)):
-#     return [{
-#         'name': doc.get('asset_name'),
-#         # 'image': f'/api/media/image/{doc.get('image_path')}',
-#         # 'audio': f'/api/media/audio/{doc.get('audio_path')}'
-#     }async for doc in asset_collection.find()]
-
-# # getting image
-# @router.get('/api/media/image/{file_name}')
-# def get_image(file_name: str, admin: dict = Depends(get_current_admin)):
-#     print('1')
-#     return FileResponse(f'{file_name}')
-
-# # getting audio
-# @router.get('/api/media/audio/{file_name}')
-# def get_audio(file_name: str, admin: dict = Depends(get_current_admin)):
-#     print('2')
-#     return FileResponse(f'{file_name}')

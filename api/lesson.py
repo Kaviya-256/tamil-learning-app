@@ -15,7 +15,7 @@ security = HTTPBearer()
 
 # List of lessons with user progress
 @router.get('/api/lessons')
-async def get_lessons(user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))):
+async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
 
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
@@ -35,7 +35,6 @@ async def get_lessons(user = Depends(require_roles(['user','learner'], [user_col
         lessons.append({
             'lesson_id': str(doc['_id']),
             'lesson_name': doc.get('lesson_name'),
-            # 'modules_count': doc.get('modules_count'),
             'modules': [{
                 'module_id': str(module['_id']),
                 'module_name': module.get('module_name')
@@ -52,7 +51,7 @@ async def get_lessons(user = Depends(require_roles(['user','learner'], [user_col
 @router.get('/api/lesson/{lesson_id}')
 async def get_lesson_modules(
     lesson_id: str,
-    user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
+    user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
@@ -68,7 +67,7 @@ async def get_lesson_modules(
 @router.get('/api/lesson/module/{module_id}')
 async def get_module_data(
     module_id: str,
-    user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
+    user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
 
     if user['role'] == 'user':
