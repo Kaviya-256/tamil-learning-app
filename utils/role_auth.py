@@ -8,6 +8,7 @@ import os
 from dotenv import load_dotenv
 from bson import ObjectId
 from typing import List
+from bson.errors import InvalidId
 
 from database.mongo import user_collection, profile_collection
 
@@ -76,13 +77,13 @@ async def get_current_user_with_roles(
 
         if not user_id:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
         
         try:
             obj_id = ObjectId(user_id)
-        except:
+        except InvalidId:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid user ID"
@@ -95,7 +96,7 @@ async def get_current_user_with_roles(
         
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
         if user.get('role') not in allowed_roles:

@@ -7,10 +7,6 @@ from api.lesson import router as lesson_router
 
 app = FastAPI()
 
-@app.get('/')
-async def hello():
-    return {'message': "Tamil learning app!"}
-
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
@@ -20,6 +16,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+@app.get('/')
+async def hello():
+    return {'message': "Tamil learning app!"}
+
 app.auth_router = auth_router
 app.admin_router = admin_router
 app.user_router = user_router

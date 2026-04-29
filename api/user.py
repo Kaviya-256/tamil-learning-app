@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from bson import ObjectId
 from datetime import datetime, timezone
-from fastapi.security import HTTPBearer
+from bson.errors import InvalidId
 
 from schema import LearnerSchema, ProfileSchema
 from database.mongo import profile_collection, user_collection
@@ -10,7 +10,6 @@ from utils.auth_utils import hash_password
 
 
 router = APIRouter()
-security = HTTPBearer()
 
 
 # adding learner
@@ -42,7 +41,10 @@ async def add_learner(
         'password': hash_password(learner.password),
         'created_at': datetime.now(timezone.utc)
     }
-    await profile_collection.insert_one(data)
+    result= await profile_collection.insert_one(data)
+    if not result:
+        raise HTTPException(status_code=500, detail="Adding learner failed")
+    
     return {
         'message': f'Learner created for owner {user_id}'
     }
@@ -61,8 +63,7 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'grade': doc.get('grade'),
             'progress': doc.get('progress')
         }
-        async for doc in profile_collection.find({'owner_id': user_id})
-        if doc.get('role') != 'user'
+        async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner'})
     ]
 
 # getting specific learner details
@@ -72,7 +73,16 @@ async def get_learner(
     user = Depends(require_roles(['user'], [user_collection]))
 ):
     
-    data = await profile_collection.find_one({'_id': ObjectId(learner_id)})
+    try:
+        id = ObjectId(learner_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    data = await profile_collection.find_one({'_id': id, 'owner_id': user['id']})
+
+    if data is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     return {
         'username': data['username'],
         'name': data['name'],
@@ -88,17 +98,28 @@ async def edit_learner(
     user = Depends(require_roles(['user'], [user_collection]))
 ):
     
+    try:
+        id = ObjectId(learner_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    update_data = {
+        'name': learner.name,
+        'age': learner.age,
+        'grade': learner.grade
+    }
+    if learner.password:
+        update_data['password'] = hash_password(learner.password)
+    
     result = await profile_collection.find_one_and_update(
-        {'_id': ObjectId(learner_id)},
+        {'_id': id, 'owner_id': user['id']},
         {
-            '$set': {
-                'name': learner.name,
-                'age': learner.age,
-                'grade': learner.grade,
-                'password': hash_password(learner.password)
-            }
+            '$set': update_data
         }
     )
+    if not result:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
     return {'message': 'Profile updated'}
 
 # deleting a learner
@@ -108,18 +129,32 @@ async def delete_learner(
     user = Depends(require_roles(['user'], [user_collection]))   
 ):
     
-    await profile_collection.delete_one(
-        {'_id': ObjectId(learner_id)}
+    try:
+        id = ObjectId(learner_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    result = await profile_collection.delete_one(
+        {'_id': id, 'owner_id': user['id']}
     )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Learner not found")
+    
     return {'message': 'learner deleted'}
 
 # User Profile Data
 @router.get('/api/user/profile')
 async def get_profile(user = Depends(require_roles(['user'], [user_collection]))):
-    profile = await user_collection.find_one({'_id': ObjectId(user['id'])})
+
+    try:
+        id = ObjectId(user['id'])
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    profile = await user_collection.find_one({'_id': id})
     if profile is None:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not exist"
         )
     return {
@@ -133,20 +168,23 @@ async def get_profile(user = Depends(require_roles(['user'], [user_collection]))
 # User profile management
 @router.post('/api/user/profile-update')
 async def manage_profile(profile: ProfileSchema, user = Depends(require_roles(['user'], [user_collection]))):
-    user_data = await user_collection.find_one({'_id': ObjectId(user['id'])})
 
-    if user_data is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+    try:
+        id = ObjectId(user['id'])
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    await user_collection.update_one(
-        {'_id': ObjectId(user['id'])},
+    result = await user_collection.update_one(
+        {'_id': id},
         {
             '$set': profile.model_dump()
         }
     )
+    if result.matched_count==0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if result.modified_count == 0:
+        return{'message': 'No changes made'}
 
     return {'message': 'Profile updated'}
 

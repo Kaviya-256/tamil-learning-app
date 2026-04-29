@@ -5,6 +5,7 @@ import os
 from bson import ObjectId
 import re
 from typing import Optional
+from bson.errors import InvalidId
 
 from schema import ModuleSchema, LessonSchema
 from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection, feedback_collection
@@ -97,11 +98,17 @@ async def lesson_modules(
     lesson_id: str,
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):    
+    
+    try:
+        id = ObjectId(lesson_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
     return [
         {
             'module_id': str(doc['_id']),
             'module_name': doc.get('module_name')}
-    async for doc in module_collection.find({'lesson_id': ObjectId(lesson_id)})]
+    async for doc in module_collection.find({'lesson_id': id})]
 
 
 # To add modules to an existing lesson
@@ -111,9 +118,14 @@ async def add_modules(
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
     
+    try:
+        id = ObjectId(lesson_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
     data = module.model_dump()
 
-    existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': ObjectId(lesson_id)})
+    existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': id})
 
     if existing_module:
         raise HTTPException(
@@ -157,8 +169,14 @@ async def update_lesson(
     lesson: LessonSchema, lesson_id: str,
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
+    
+    try:
+        id = ObjectId(lesson_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
     data = await lesson_collection.find_one_and_update(
-        {'_id': ObjectId(lesson_id)},
+        {'_id': id},
         {
             '$set': {'lesson_name': lesson.lesson_name}
         }
@@ -169,14 +187,37 @@ async def update_lesson(
 # Deleting lesson
 @router.delete('/api/admin/{lesson_id}/delete-lesson')
 async def delete_lesson(lesson_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
-    await module_collection.delete_many({'lesson_id': ObjectId(lesson_id)})
-    await lesson_collection.delete_one({'_id': ObjectId(lesson_id)})
+
+    try:
+        id = ObjectId(lesson_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    await module_collection.delete_many({'lesson_id': id})
+    await lesson_collection.delete_one({'_id': id})
+
     return {'message': 'lesson deleted'}
 
 # Deleting Module 
 @router.delete('/api/admin/lesson/{module_id}/delete-module')
 async def delete_module(module_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
-    await module_collection.delete_one({'_id': ObjectId(module_id)})
+
+    try:
+        id = ObjectId(module_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    module =  await module_collection.find_one({'_id':id})
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+    
+    await module_collection.delete_one({'_id': id})
+    
+    await lesson_collection.update_one(
+        {'_id': module['lesson_id']},
+        {'$inc': {'modules_count': -1}}
+    )
+
     return {'message': 'Module deleted'}
 
 # Uploading Asset
@@ -246,7 +287,10 @@ async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection
     feedback=[]
 
     async for doc in feedback_collection.find({}):
-        learner = await profile_collection.find_one({'_id': ObjectId(doc.get('user_id'))})
+        try:
+            learner = await profile_collection.find_one({'_id': ObjectId(doc.get('user_id'))})
+        except Exception:
+            continue
         if learner is None:
             continue
 

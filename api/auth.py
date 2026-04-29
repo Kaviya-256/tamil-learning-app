@@ -26,7 +26,7 @@ async def signup_user(user: SignupSchema):
     
     if user.password != user.passwordConfirm:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password doesn't match"
         )
     
@@ -62,14 +62,24 @@ async def login_user(user: LoginSchema):
     
     if user.email:
         db_user = await user_collection.find_one({'email': user.email})
+        if not db_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        if db_user['verified'] == False:
+            raise HTTPException(
+                status_code=status.HTTP_405_METHOD_NOT_ALLOWED,
+                detail="Verify email first"
+            )
     elif user.username:
         db_user = await profile_collection.find_one({'username': user.username})
+        if db_user is None:
+            raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Learner not found"
+                )
 
-    if not db_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User not found"
-        )
     
     if not verify_password(user.password, db_user['password']):
         raise HTTPException(
@@ -148,7 +158,7 @@ async def verify_otp(otp_data: VerifyOTPSchema):
     user= await user_collection.find_one({'email': otp_data.email})
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
     await user_collection.find_one_and_update(
@@ -194,16 +204,29 @@ async def reset_password(pwd: ResetPasswordSchema):
 
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
+        )
+    
+    otp = await otp_collection.find_one({'email': pwd.email})
+    if otp is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="otp not found"
+        )
+    
+    if otp['otp_verified'] is False:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="OTP not verified"
         )
 
     if pwd.password != pwd.passwordConfirm:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail="Password does not match"
         )
-    if pwd.password == user['password']:
+    if verify_password(pwd.password, user['password']):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password does not equal to old one"

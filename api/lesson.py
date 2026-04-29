@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi.responses import FileResponse
 from pymongo import ReturnDocument
 from datetime import datetime, timezone
+from bson.errors import InvalidId
 
 from database.mongo import module_collection, profile_collection, lesson_collection, user_collection, feedback_collection
 from utils.role_auth import require_roles
@@ -19,6 +20,17 @@ async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], 
 
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
+        
+    elif user['role'] == 'learner':
+        try:
+            id = ObjectId(user['id'])
+        except InvalidId:
+            raise HTTPException(status_code=400, detail="Invalid ID format")
+        
+        user = await profile_collection.find_one({'_id':id})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="Profile not found")
 
     pipeline= [
         {
@@ -43,7 +55,7 @@ async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], 
 
     return {
         'name': user.get('name'),
-        'progress': user.get('progress'),
+        'progress': user.get('progress',0),
         'lessons': lessons
     }
 
@@ -53,14 +65,22 @@ async def get_lesson_modules(
     lesson_id: str,
     user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
+    
+    try:
+        id = ObjectId(lesson_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
+        if not user:
+            raise HTTPException(status_code=404, detail="Profile not found")
         user['id'] = str(user['_id'])
 
     return [{
         'module_id': str(doc['_id']),
         'module_name': doc.get('module_name')
-    } async for doc in module_collection.find({'lesson_id': ObjectId(lesson_id)})]
+    } async for doc in module_collection.find({'lesson_id': id})]
 
 
 # Module info
@@ -75,16 +95,18 @@ async def get_module_data(
         if not user:
             raise HTTPException(status_code=404, detail="Profile not found")
         user['id'] = str(user['_id'])
-
+    
     try:
-        module = await module_collection.find_one({'_id': ObjectId(module_id)})
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid module_id")
+        id = ObjectId(module_id)
+        user_id = ObjectId(user['id'])
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    module = await module_collection.find_one({'_id': id})
 
     if module is None:
         raise HTTPException(
-            status_code=404,
-            detail="Module not found"
+            status_code=404, detail="Module not found"
         )
 
     data = {
@@ -93,34 +115,41 @@ async def get_module_data(
         'audio': f"/api/media/audio/{module_id}"
     }
 
-    result = await profile_collection.find_one_and_update(
-        {'_id': ObjectId(user['id'])},
-        {
-            '$addToSet': {'lessons_attended': module['_id']}
-        },
-        return_document=ReturnDocument.AFTER
-    )
-    progress = await calculate_progress(len(result.get('lessons_attended',[])))
+    if user['role'] != 'admin':
+        result = await profile_collection.find_one_and_update(
+            {'_id': user_id},
+            {
+                '$addToSet': {'lessons_attended': module['_id']}
+            },
+            return_document=ReturnDocument.AFTER
+        )
+        progress = await calculate_progress(len(result.get('lessons_attended',[])))
 
-    await profile_collection.update_one(
-        {'_id': ObjectId(user['id'])},
-        {
-            '$set': {'progress': progress}
-        }
-    )
+        await profile_collection.update_one(
+            {'_id': user_id},
+            {
+                '$set': {'progress': progress}
+            }
+        )
     
     return data
 
 # getting audio
 @router.get('/api/media/audio/{module_id}')
-async def get_audio(module_id: str):
+async def get_audio(module_id: str, user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
+
+    try:
+        id = ObjectId(module_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    module = await module_collection.find_one({'_id': ObjectId(module_id)})
+    module = await module_collection.find_one({'_id': id})
     if module is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Module not found"
         )
+    
     return FileResponse(module.get('audio_path'), media_type="audio/mpeg")
 
 # Feedback
