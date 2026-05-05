@@ -162,7 +162,7 @@ async def get_profile(user = Depends(require_roles(['user'], [user_collection]))
         'city': profile.get('city'),
         'state': profile.get('state'),
         'country': profile.get('country'),
-        'valid_age': profile.get('valid_age')
+        'age': profile.get('age')
     }
 
 # User profile management

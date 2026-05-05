@@ -65,4 +65,4 @@ class ProfileSchema(BaseModel):
     city: str
     state: str
     country: str
-    valid_age: bool
+    age: int
