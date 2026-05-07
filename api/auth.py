@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from random import randint
 
-from database.mongo import user_collection, profile_collection, otp_collection
+from database.mongo import user_collection, profile_collection, otp_collection, feedback_collection
 from schema import *
 from utils.auth_utils import hash_password, verify_password
 from jwt_auth import create_access_token, create_refresh_token
@@ -254,6 +254,13 @@ async def reset_password(pwd: ResetPasswordSchema):
         'role': user.get('role')
     }
     
+# Public Feedback
+@router.get('/api/feedback/public')
+async def verified_feedback():
+
+    feedback = await feedback_collection.find({'admin_approved': True}, {'_id':0, 'name':1, 'rating': 1, 'comments':1}).to_list()
+    return feedback
+
 # @router.post('/api/refresh')
 # async def validate_refresh_token(token: str):
 #     user =await refresh_access_token(token)

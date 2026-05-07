@@ -298,7 +298,25 @@ async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection
             'id': str(doc['_id']),
             'name': learner['name'],
             'rating': doc.get('rating'),
-            'comments': doc.get('comments')
+            'comments': doc.get('comments'),
+            'admin_approved': doc.get('admin_approved')
         })
     
     return feedback
+
+# Approve Feedback
+@router.put('/api/admin/feedback/approve')
+async def approve_feedback(feedback_id: str):
+    try:
+        id = ObjectId(feedback_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid id format")
+    
+    result = await feedback_collection.update_one(
+        {'_id': id},
+        [{'$set': {'admin_approved': {'$not': '$admin_approved'}}}]
+    )
+    if result.matched_count==0:
+        raise HTTPException(status_code=404, detail="Feedback not found")
+    
+    return {'message': 'Feedback is approved'}

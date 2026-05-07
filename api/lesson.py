@@ -158,24 +158,32 @@ async def collect_feedback(
     feedback: FeedbackSchema,
     user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
 ):
-    user_id = user.get('id')
-    if not user_id:
+    
+    try:
+        id = ObjectId(user['id'])    
+    except:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid user"
+            detail="Invalid id"
         )
+    
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
-        if not user:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        user['id'] = str(user['_id'])
+    elif user['role'] == 'learner':
+        user = await profile_collection.find_one({'_id': id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    user['id'] = str(user['_id'])
+
     
     result = await feedback_collection.update_one(
         {'user_id': user['id']},
         {
             '$set': {
+                'name': user['name'],
                 'rating': feedback.rating,
                 'comments': feedback.comments,
+                'admin_approved': False,
                 'updated_at': datetime.now(timezone.utc)
             }
         },

@@ -24,7 +24,6 @@ class VerifyEmail:
 
     async def sendMail(self, subject, template):
         try:
-            print("Enter verify email")
             conf = ConnectionConfig(
                 MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
                 MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
@@ -35,29 +34,22 @@ class VerifyEmail:
                 MAIL_STARTTLS=True,
                 MAIL_SSL_TLS=False,
             )
-            print('configured')
             template = env.get_template(f'{template}.html')
             html = template.render(code=self.code, first_name=self.name, subject=subject)
-            print('sending msg')
             message = MessageSchema(
                 subject=subject, recipients=self.email, body=html, subtype='html'
             )
-            print('message schema')
             fm = FastMail(conf)
-            print('fastmail configured')
             await fm.send_message(message)
-            print("Email sent successfully")
 
         except Exception as e:
-            print(f"Failed to send email: {e}")
             raise HTTPException(
                 status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email"
             )
         
     async def sendVerificationCode(self):
-        print("Enter verify email")
-        await self.sendMail('Welcome to tamil app! Please Verify Your Email','verification')
+        await self.sendMail('Welcome to Paignthamizh app! Please Verify Your Email','verification')
 
 class ForgetPassword:
     def __init__(self, name:str, code: str, email: List[EmailStr]):
@@ -77,29 +69,22 @@ class ForgetPassword:
                 MAIL_STARTTLS=True,
                 MAIL_SSL_TLS=False,
             )
-            print('forgetpass configured')
 
             template = env.get_template(f'{template}.html')
             html = template.render(code=self.code, first_name=self.name, subject=subject)
-            print('template rendered')
 
             message = MessageSchema(
                 subject=subject, recipients=self.email, body=html, subtype='html'
             )
-            print('message schema created')
 
             fm = FastMail(conf)
-            print('fastmail configured')
 
             await fm.send_message(message)
-            print("Forget password email sent successfully")
 
         except Exception as e:
-            print(f'Failed to send email: {e}')
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send forget password email"
             )
     async def sendVerificationCode(self):
-        print("Enter verify email for forget password")
-        await self.sendEmail("Welcome to tamil app, verify your email",'forgotPass')
+        await self.sendEmail("Welcome to Paignthamizh app, verify your email",'forgotPass')
