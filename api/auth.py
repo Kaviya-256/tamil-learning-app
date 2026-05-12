@@ -99,7 +99,8 @@ async def login_user(user: LoginSchema):
     return{
         'access_token': access_token,
         'refresh_token': refresh_token,
-        'role': db_user.get('role')
+        'role': db_user.get('role'),
+        'name': db_user.get('name')
     }
 
 @router.post('/api/send-otp-signup')
