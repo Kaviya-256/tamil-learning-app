@@ -3,7 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from bson.errors import InvalidId
 
-from schema import LearnerSchema, ProfileSchema
+from schema import LearnerSchema, ProfileSchema, LearnerUpdateSchema
 from database.mongo import profile_collection, user_collection
 from utils.role_auth import require_roles
 from utils.auth_utils import hash_password
@@ -38,6 +38,7 @@ async def add_learner(
         'role': 'learner',
         'progress': 0,
         'lessons_attended': [],
+        'password_str': learner.password,
         'password': hash_password(learner.password),
         'created_at': datetime.now(timezone.utc)
     }
@@ -88,13 +89,14 @@ async def get_learner(
         'name': data['name'],
         'age': data['age'],
         'grade': data['grade'],
-        'progress': data['progress']
+        'progress': data['progress'],
+        'password_str': data.get('password_str')
     }
 
 # editing a learner
 @router.put('/api/user/learner/{learner_id}/edit')
 async def edit_learner(
-    learner: LearnerSchema,learner_id: str,
+    learner: LearnerUpdateSchema,learner_id: str,
     user = Depends(require_roles(['user'], [user_collection]))
 ):
     
@@ -109,7 +111,10 @@ async def edit_learner(
         'grade': learner.grade
     }
     if learner.password:
-        update_data['password'] = hash_password(learner.password)
+        update_data.update({
+            'password_str': learner.password,
+            'password': hash_password(learner.password)
+        })
     
     result = await profile_collection.find_one_and_update(
         {'_id': id, 'owner_id': user['id']},

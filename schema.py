@@ -30,9 +30,54 @@ class SignupSchema(BaseModel):
     passwordConfirm: str
     country: str
 
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, pwd):
+        if len(pwd) < 6:
+            raise ValueError("Password must be atleast 6 characters long")
+        if not re.search(r'\d', pwd):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', pwd):
+            raise ValueError('Password must contain at least one special symbol')
+        if not re.search(r'[a-z]', pwd):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', pwd):
+            raise ValueError('Password must contain at least one uppercase letter')
+        return pwd
+    
+    @field_validator('passwordConfirm')
+    @classmethod
+    def password_match(cls, v, values):
+        if 'password' in values.data and v != values.data['password']:
+            raise ValueError('Passwords do not match')
+        return v
+    
+
 class ResetPasswordSchema(EmailSchema):
     password: str
-    passwordConfirm: str 
+    passwordConfirm: str
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, pwd):
+        if len(pwd) < 6:
+            raise ValueError("Password must be atleast 6 characters long")
+        if not re.search(r'\d', pwd):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', pwd):
+            raise ValueError('Password must contain at least one special symbol')
+        if not re.search(r'[a-z]', pwd):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', pwd):
+            raise ValueError('Password must contain at least one uppercase letter')
+        return pwd
+    
+    @field_validator('passwordConfirm')
+    @classmethod
+    def password_match(cls, v, values):
+        if 'password' in values.data and v != values.data['password']:
+            raise ValueError('Passwords do not match')
+        return v
 
 
 class LearnerSchema(BaseModel):
@@ -50,6 +95,47 @@ class LearnerSchema(BaseModel):
                 "Username only contain letters, numbers and underscore"
             )
         return value
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, pwd):
+        if len(pwd) < 6:
+            raise ValueError("Password must be atleast 6 characters long")
+        if not re.search(r'\d', pwd):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', pwd):
+            raise ValueError('Password must contain at least one special symbol')
+        if not re.search(r'[a-z]', pwd):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', pwd):
+            raise ValueError('Password must contain at least one uppercase letter')
+        return pwd
+    
+    
+class LearnerUpdateSchema(BaseModel):
+    name: str
+    age: int
+    grade: int
+    password: Optional[str] = None
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, pwd):
+        if pwd is None:
+            return pwd
+        if len(pwd) < 6:
+            raise ValueError("Password must be atleast 6 characters long")
+        if not re.search(r'\d', pwd):
+            raise ValueError('Password must contain at least one digit')
+        if not re.search(r'[!@#$%^&*(),.?\":{}|<>]', pwd):
+            raise ValueError('Password must contain at least one special symbol')
+        if not re.search(r'[a-z]', pwd):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not re.search(r'[A-Z]', pwd):
+            raise ValueError('Password must contain at least one uppercase letter')
+        return pwd
+
+
 class LessonSchema(BaseModel):
     lesson_name: str
 
