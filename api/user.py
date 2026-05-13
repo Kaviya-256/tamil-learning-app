@@ -62,7 +62,8 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'name': doc.get('name'),
             'age': doc.get('age'),
             'grade': doc.get('grade'),
-            'progress': doc.get('progress')
+            'progress': doc.get('progress'),
+            'password': doc.get('password_str')
         }
         async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner'})
     ]
@@ -90,7 +91,7 @@ async def get_learner(
         'age': data['age'],
         'grade': data['grade'],
         'progress': data['progress'],
-        'password_str': data.get('password_str')
+        'password': data.get('password_str')
     }
 
 # editing a learner
