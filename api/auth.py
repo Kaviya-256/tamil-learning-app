@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, status
 from datetime import datetime, timedelta, timezone
 from random import randint
+import os
 
 from database.mongo import user_collection, profile_collection, otp_collection, feedback_collection
 from schema import *
@@ -127,7 +128,7 @@ async def verify_email(otp_data: EmailSchema):
         {
             '$set': {
                 'otp': code,
-                'expires_at': datetime.now(timezone.utc) + timedelta(minutes=10),
+                'expires_at': datetime.now(timezone.utc) + timedelta(minutes=int(os.getenv('OTP_EXPIRE_TIME') or 5)),
                 'otp_verified': False
             }
         },
@@ -202,7 +203,7 @@ async def verify_email(otp_data: EmailSchema):
         {
             '$set': {
                 'otp': code,
-                'expires_at': datetime.now(timezone.utc)+timedelta(minutes=5),
+                'expires_at': datetime.now(timezone.utc)+timedelta(minutes=int(os.getenv('OTP_EXPIRE_TIME') or 5)),
                 'otp_verified': False
             }
         },
