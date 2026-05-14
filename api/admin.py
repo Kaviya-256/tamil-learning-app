@@ -33,10 +33,10 @@ async def get_admin(admin = Depends(require_roles(['admin'], [user_collection]))
 @router.get('/api/admin/users')
 async def admin_dashboard(admin = Depends(require_roles(['admin'], [user_collection]))):
     
-    result=user_collection.find({}, {'name':1, 'progress':1, 'role':1})    
+    result=user_collection.find({}, {'name':1, 'progress':1, 'role':1, 'disabled':1})    
     user=[]
     async for doc in result:
-        if doc.get('role') != 'admin':
+        if doc.get('role') != 'admin' and doc.get('disabled') is not True:
             user.append({
                 'user_id': str(doc['_id']),
                 'name': doc.get('name'),
@@ -55,7 +55,7 @@ async def get_users_learners(
     learners=[]
 
     async for doc in result:
-        if doc.get('role') != 'user':
+        if doc.get('role') != 'user' and doc.get('disabled') is not True:
             learners.append({
                 'learner_id': str(doc['_id']),
                 'username': doc.get('username'),
@@ -306,7 +306,7 @@ async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection
 
 # Approve Feedback
 @router.put('/api/admin/feedback/approve')
-async def approve_feedback(feedback_id: str):
+async def approve_feedback(feedback_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
     try:
         id = ObjectId(feedback_id)
     except InvalidId:
@@ -320,3 +320,49 @@ async def approve_feedback(feedback_id: str):
         raise HTTPException(status_code=404, detail="Feedback not found")
     
     return {'message': 'Feedback is approved'}
+
+
+# Disable User and their learner
+@router.patch('/api/admin/user/{user_id}/disable')
+async def disable_user(user_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+    try:
+        id = ObjectId(user_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    data=await profile_collection.update_many(
+        {'owner_id': user_id},
+        {'$set': {'disabled': True}}
+    )
+    if data.matched_count==0:
+        raise HTTPException(status_code=404, detail="No profiles found for this user")
+    
+    result= await user_collection.update_one(
+        {'_id': id},
+        {'$set': {'disabled': True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {'message': 'Disabled'}
+
+
+# Disable learner
+@router.patch('/api/admin/learner/{learner_id}/disable')
+async def disable_learner(learner_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+    try:
+        id = ObjectId(learner_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    result = await profile_collection.update_one(
+        {'_id': id},
+        {'$set': {'disabled': True}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Learner not found")
+
+    return {'message': 'Learner disabled'}

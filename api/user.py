@@ -40,6 +40,7 @@ async def add_learner(
         'lessons_attended': [],
         'password_str': learner.password,
         'password': hash_password(learner.password),
+        'disabled': False,
         'created_at': datetime.now(timezone.utc)
     }
     result= await profile_collection.insert_one(data)
@@ -65,7 +66,7 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'progress': doc.get('progress'),
             'password': doc.get('password_str')
         }
-        async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner'})
+        async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False})
     ]
 
 # getting specific learner details
@@ -84,6 +85,9 @@ async def get_learner(
 
     if data is None:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    if data.get('disabled'):
+        raise HTTPException(status_code=403, detail="User not allowed")
     
     return {
         'username': data['username'],

@@ -18,11 +18,13 @@ async def signup_user(user: SignupSchema):
    
     existing_user = await user_collection.find_one({'email': user.email})
     if existing_user:
+        if existing_user.get('disabled'):
+            raise HTTPException(status_code=403, detail="User not allowed")
+        
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail = "Email is already registered"
         )
-    
     
     if user.password != user.passwordConfirm:
         raise HTTPException(
@@ -39,7 +41,8 @@ async def signup_user(user: SignupSchema):
         "verified": False,
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
-        "password": hash_password(user.password)
+        "password": hash_password(user.password),
+        'disabled': False
     })
     result = await user_collection.insert_one(user_info)
 
@@ -49,7 +52,8 @@ async def signup_user(user: SignupSchema):
         'email': user.email,
         'role': 'user',
         'progress': 0,
-        'lessons_attended': []
+        'lessons_attended': [],
+        'disabled': False
     }
     await profile_collection.insert_one(profile_data)
     return {'status': 'Success!'}
@@ -79,8 +83,10 @@ async def login_user(user: LoginSchema):
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Learner not found"
                 )
-
     
+    if db_user.get('disabled'):
+            raise HTTPException(status_code=403, detail="User not allowed")
+
     if not verify_password(user.password, db_user['password']):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -105,6 +111,14 @@ async def login_user(user: LoginSchema):
 
 @router.post('/api/send-otp-signup')
 async def verify_email(otp_data: EmailSchema):
+
+    existing_user = await user_collection.find_one({'email': otp_data.email})
+
+    if not existing_user:        
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail = "User not registered"
+        )
     
     code = str(randint(100000,999999))
     
@@ -178,6 +192,10 @@ async def verify_email(otp_data: EmailSchema):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User does not exist. Please signup"
         )
+    
+    if record.get('disabled'):
+            raise HTTPException(status_code=403, detail="User not allowed")
+    
     code = str(randint(100000,999999))
     result = await otp_collection.update_one(
         {'email': otp_data.email},
@@ -208,6 +226,8 @@ async def reset_password(pwd: ResetPasswordSchema):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
+    if user.get('disabled'):
+            raise HTTPException(status_code=403, detail="User not allowed")
     
     otp = await otp_collection.find_one({'email': pwd.email})
     if otp is None:
