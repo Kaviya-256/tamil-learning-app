@@ -1,15 +1,18 @@
 # auth.py
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from datetime import datetime, timedelta, timezone
 from random import randint
 import os
+from bson import ObjectId
+from bson.errors import InvalidId
 
 from database.mongo import user_collection, profile_collection, otp_collection, feedback_collection
-from schema import *
+from schema import SignupSchema, LoginSchema, EmailSchema, VerifyOTPSchema, ResetPasswordSchema, ChangePasswordSchema
 from utils.auth_utils import hash_password, verify_password
 from jwt_auth import create_access_token, create_refresh_token
 from utils.role_auth import refresh_access_token
 from utils.verifyEmail import VerifyEmail, ForgetPassword
+from utils.role_auth import require_roles
 
 router = APIRouter()
 
@@ -282,6 +285,55 @@ async def verified_feedback():
 
     feedback = await feedback_collection.find({'admin_approved': True}, {'_id':0, 'name':1, 'rating': 1, 'comments':1}).to_list()
     return feedback
+
+
+# User and admin Password Reset
+@router.patch('/api/change-password')
+async def change_password(pwd: ChangePasswordSchema, user = Depends(require_roles(['user', 'admin'], [user_collection]))):
+
+    try:
+        id = ObjectId(user['id'])
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    data = await user_collection.find_one({'_id': id})
+
+    if not data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    if data.get('disabled'):
+            raise HTTPException(status_code=403, detail="User not allowed")
+    
+    if not verify_password(pwd.currentPassword, data['password']):
+        raise HTTPException(
+            status_code=400, detail="Wrong current password"
+        )
+    
+    if pwd.newPassword != pwd.passwordConfirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password does not match"
+        )
+    
+    if verify_password(pwd.newPassword, data['password']):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password does not equal to old one"
+        )
+    result = await user_collection.update_one(
+        {'_id': id},
+        {
+            '$set': {'password': hash_password(pwd.newPassword)}
+        }
+    )
+
+    if result.matched_count ==0:
+        return{'message': 'No changes made'}
+    
+    return {'message': 'Password updated'}
+
 
 # @router.post('/api/refresh')
 # async def validate_refresh_token(token: str):
