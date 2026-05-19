@@ -7,11 +7,11 @@ from bson import ObjectId
 from bson.errors import InvalidId
 
 from database.mongo import user_collection, profile_collection, otp_collection, feedback_collection
-from schema import SignupSchema, LoginSchema, EmailSchema, VerifyOTPSchema, ResetPasswordSchema, ChangePasswordSchema
+from schema import SignupSchema, LoginSchema, EmailSchema, VerifyOTPSchema, ResetPasswordSchema, ChangePasswordSchema, ContactAdminSchema
 from utils.auth_utils import hash_password, verify_password
 from jwt_auth import create_access_token, create_refresh_token
 from utils.role_auth import refresh_access_token
-from utils.verifyEmail import VerifyEmail, ForgetPassword
+from utils.verifyEmail import VerifyEmail, ForgetPassword, ContactAdminMail
 from utils.role_auth import require_roles
 
 router = APIRouter()
@@ -25,10 +25,31 @@ async def signup_user(user: SignupSchema):
         if existing_user.get('disabled'):
             raise HTTPException(status_code=403, detail="User not allowed")
         
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail = "Email is already registered"
-        )
+        elif existing_user.get('deleted'):
+            user_info = user.model_dump()
+            del user_info['passwordConfirm']
+
+            user_info.update({
+                "verified": False,
+                "updated_at": datetime.now(timezone.utc),
+                "password": hash_password(user.password),
+                'deleted': False
+            })
+            result = await user_collection.update_one(
+                {'email': user.email},
+                {'$set': user_info}
+            )
+            await profile_collection.update_many(
+                {'owner_id': str(existing_user['_id'])},
+                {'$set': {'deleted': False}}
+            )
+            return {'status': 'Success!'}
+        
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail = "Email is already registered"
+            )
     
     if user.password != user.passwordConfirm:
         raise HTTPException(
@@ -46,7 +67,8 @@ async def signup_user(user: SignupSchema):
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
         "password": hash_password(user.password),
-        'disabled': False
+        'disabled': False,
+        'deleted': False
     })
     result = await user_collection.insert_one(user_info)
 
@@ -57,7 +79,8 @@ async def signup_user(user: SignupSchema):
         'role': 'user',
         'progress': 0,
         'lessons_attended': [],
-        'disabled': False
+        'disabled': False,
+        'deleted': False
     }
     await profile_collection.insert_one(profile_data)
     return {'status': 'Success!'}
@@ -90,6 +113,9 @@ async def login_user(user: LoginSchema):
     
     if db_user.get('disabled'):
             raise HTTPException(status_code=403, detail="User not allowed")
+    
+    if db_user.get('deleted'):
+        raise HTTPException(status_code=404, detail="User not found. Please signup")
 
     if not verify_password(user.password, db_user['password']):
         raise HTTPException(
@@ -123,6 +149,11 @@ async def verify_email(otp_data: EmailSchema):
             status_code=status.HTTP_404_NOT_FOUND,
             detail = "User not registered"
         )
+    if existing_user.get('verified') is True:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already verified"
+            )
     
     code = str(randint(100000,999999))
     
@@ -200,6 +231,9 @@ async def verify_email(otp_data: EmailSchema):
     if record.get('disabled'):
             raise HTTPException(status_code=403, detail="User not allowed")
     
+    if record.get('deleted'):
+        raise HTTPException(status_code=404, detail="User not found. Please signup")
+    
     code = str(randint(100000,999999))
     result = await otp_collection.update_one(
         {'email': otp_data.email},
@@ -232,6 +266,9 @@ async def reset_password(pwd: ResetPasswordSchema):
         )
     if user.get('disabled'):
             raise HTTPException(status_code=403, detail="User not allowed")
+    
+    if user.get('deleted'):
+        raise HTTPException(status_code=404, detail="User not found. Please signup")
     
     otp = await otp_collection.find_one({'email': pwd.email})
     if otp is None:
@@ -287,6 +324,16 @@ async def verified_feedback():
     return feedback
 
 
+# Contact Admin
+@router.post('/api/contact-admin')
+async def contact_admin(contact: ContactAdminSchema):
+
+    mail = ContactAdminMail(contact)
+    await mail.sendMailtoAdmin()
+
+    return {'message': "Message sent successfully"}
+
+
 # User and admin Password Reset
 @router.patch('/api/change-password')
 async def change_password(pwd: ChangePasswordSchema, user = Depends(require_roles(['user', 'admin'], [user_collection]))):
@@ -305,6 +352,9 @@ async def change_password(pwd: ChangePasswordSchema, user = Depends(require_role
         )
     if data.get('disabled'):
             raise HTTPException(status_code=403, detail="User not allowed")
+    
+    if data.get('deleted'):
+        raise HTTPException(status_code=404, detail="User not found. Please signup")
     
     if not verify_password(pwd.currentPassword, data['password']):
         raise HTTPException(

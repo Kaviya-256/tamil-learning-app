@@ -33,10 +33,10 @@ async def get_admin(admin = Depends(require_roles(['admin'], [user_collection]))
 @router.get('/api/admin/users')
 async def admin_dashboard(admin = Depends(require_roles(['admin'], [user_collection]))):
     
-    result=user_collection.find({}, {'name':1, 'progress':1, 'role':1, 'disabled':1})    
+    result=user_collection.find({}, {'name':1, 'progress':1, 'role':1, 'disabled':1, 'deleted':1})    
     user=[]
     async for doc in result:
-        if doc.get('role') != 'admin' and doc.get('disabled') is not True:
+        if doc.get('role') != 'admin' and doc.get('disabled') is not True and doc.get('deleted') is not True:
             user.append({
                 'user_id': str(doc['_id']),
                 'name': doc.get('name'),
@@ -55,7 +55,7 @@ async def get_users_learners(
     learners=[]
 
     async for doc in result:
-        if doc.get('role') != 'user' and doc.get('disabled') is not True:
+        if doc.get('role') != 'user' and doc.get('disabled') is not True and doc.get('deleted') is not True:
             learners.append({
                 'learner_id': str(doc['_id']),
                 'username': doc.get('username'),
@@ -366,3 +366,49 @@ async def disable_learner(learner_id: str, admin = Depends(require_roles(['admin
         raise HTTPException(status_code=404, detail="Learner not found")
 
     return {'message': 'Learner disabled'}
+
+
+# Delete User and their learner
+@router.delete('/api/admin/user/{user_id}/delete')
+async def delete_user(user_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+    try:
+        id = ObjectId(user_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    data=await profile_collection.update_many(
+        {'owner_id': user_id},
+        {'$set': {'deleted': True}}
+    )
+    if data.matched_count==0:
+        raise HTTPException(status_code=404, detail="No profiles found for this user")
+    
+    result= await user_collection.update_one(
+        {'_id': id},
+        {'$set': {'deleted': True}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {'message': 'Deleted user'}
+
+
+# Delete learner
+@router.delete('/api/admin/learner/{learner_id}/delete')
+async def delete_learner(learner_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+    try:
+        id = ObjectId(learner_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    result = await profile_collection.update_one(
+        {'_id': id},
+        {'$set': {'deleted': True}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Learner not found")
+
+    return {'message': 'Learner deleted'}

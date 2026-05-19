@@ -179,3 +179,9 @@ class ChangePasswordSchema(BaseModel):
         if 'newPassword' in values.data and v != values.data['newPassword']:
             raise ValueError('Passwords do not match')
         return v
+    
+class ContactAdminSchema(BaseModel):
+    name: str
+    email: EmailStr
+    subject: str
+    message: str

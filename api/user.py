@@ -24,6 +24,22 @@ async def add_learner(
         {'username': learner.username}
     )
     if existing_learner:
+        if existing_learner.get('deleted'):
+            result=await profile_collection.update_one(
+                {'username': learner.username},
+                {'$set': {
+                    'name': learner.name,
+                    'age': learner.age,
+                    'grade': learner.grade,
+                    'password_str': learner.password,
+                    'password': hash_password(learner.password),
+                    'deleted': False
+                }}
+            )
+            if result.matched_count==0:
+                raise HTTPException(status_code=400, detail="Can't recover learner")
+            return {'message': 'learner recovered'}
+        
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Learner with the username already exist"
@@ -41,6 +57,7 @@ async def add_learner(
         'password_str': learner.password,
         'password': hash_password(learner.password),
         'disabled': False,
+        'deleted': False,
         'created_at': datetime.now(timezone.utc)
     }
     result= await profile_collection.insert_one(data)
@@ -48,7 +65,7 @@ async def add_learner(
         raise HTTPException(status_code=500, detail="Adding learner failed")
     
     return {
-        'message': f'Learner created for owner {user_id}'
+        'message': 'Learner created'
     }
 
 # getting learners list
@@ -66,7 +83,7 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'progress': doc.get('progress'),
             'password': doc.get('password_str')
         }
-        async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False})
+        async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False, 'deleted': False})
     ]
 
 # getting specific learner details
@@ -88,6 +105,9 @@ async def get_learner(
     
     if data.get('disabled'):
         raise HTTPException(status_code=403, detail="User not allowed")
+    
+    if data.get('deleted'):
+        raise HTTPException(status_code=403, detail="User not found. Please signup")
     
     return {
         'username': data['username'],
