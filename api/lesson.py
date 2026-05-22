@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from pymongo import ReturnDocument
 from datetime import datetime, timezone
 from bson.errors import InvalidId
+import os
 
 from database.mongo import module_collection, profile_collection, lesson_collection, user_collection, feedback_collection
 from utils.role_auth import require_roles
@@ -168,6 +169,20 @@ async def get_audio(module_id: str, user = Depends(require_roles(['user','learne
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Module not found"
+        )
+    
+    audio_path = module.get('audio_path')
+
+    if not audio_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No audio path associated with this module"
+        )
+
+    if not os.path.exists(audio_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Audio file not found on server"
         )
     
     return FileResponse(module.get('audio_path'), media_type="audio/mpeg")
