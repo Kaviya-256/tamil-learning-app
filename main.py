@@ -1,5 +1,5 @@
 # main.py
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from api.auth import router as auth_router
 from api.admin import router as admin_router
 from api.user import router as user_router
@@ -8,10 +8,16 @@ from api.lesson import router as lesson_router
 app = FastAPI()
 
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+origins= os.getenv("CORS_ORIGINS", "").split(",")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://darkcyan-dunlin-203492.hostingersite.com","http://localhost:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
