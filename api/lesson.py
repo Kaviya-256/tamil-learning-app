@@ -34,10 +34,30 @@ async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], 
 
     pipeline= [
         {
+            '$sort': {
+                '_id': 1
+            }
+        },
+        {
             '$lookup': {
                 'from':'modules',
-                'localField': '_id',
-                'foreignField': 'lesson_id',
+                'let': {
+                'lessonId': '$_id'
+                },
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': ['$lesson_id', '$$lessonId']
+                            }
+                        }
+                    },
+                    {
+                        '$sort': {
+                            '_id': 1
+                        }
+                    }
+                ],
                 'as': 'modules'
             }
         }
@@ -80,7 +100,7 @@ async def get_lesson_modules(
     return [{
         'module_id': str(doc['_id']),
         'module_name': doc.get('module_name')
-    } async for doc in module_collection.find({'lesson_id': id})]
+    } async for doc in module_collection.find({'lesson_id': id}).sort({"_id":1})]
 
 
 # Module info

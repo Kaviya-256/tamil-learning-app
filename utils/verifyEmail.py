@@ -2,18 +2,17 @@
 from typing import List
 from pydantic import EmailStr
 from fastapi import HTTPException, status
-from fastapi_mail import ConnectionConfig, MessageSchema, FastMail
-from jinja2 import Environment, PackageLoader, select_autoescape
+from fastapi_mail import MessageSchema
+from jinja2 import Environment, select_autoescape, FileSystemLoader
 
-from dotenv import load_dotenv
 import os
 
 from schema import ContactAdminSchema
+from utils.mail_config import fm
 
-load_dotenv()
 
 env = Environment(
-    loader= PackageLoader('templates',''),
+    loader= FileSystemLoader('templates'),
     autoescape= select_autoescape(['html'])
 
 )
@@ -26,25 +25,16 @@ class VerifyEmail:
 
     async def sendMail(self, subject, template):
         try:
-            conf = ConnectionConfig(
-                MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
-                MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
-                MAIL_FROM=os.getenv('MAIL_FROM'),
-                MAIL_PORT=os.getenv('MAIL_PORT'),
-                MAIL_SERVER=os.getenv('MAIL_SERVER'),
-                MAIL_FROM_NAME=os.getenv('MAIL_FROM_NAME'),
-                MAIL_STARTTLS=True,
-                MAIL_SSL_TLS=False,
-            )
             template = env.get_template(f'{template}.html')
             html = template.render(code=self.code, first_name=self.name, subject=subject)
             message = MessageSchema(
                 subject=subject, recipients=self.email, body=html, subtype='html'
             )
-            fm = FastMail(conf)
+            
             await fm.send_message(message)
 
         except Exception as e:
+            print('Email error: ',e)
             raise HTTPException(
                 status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email"
@@ -61,17 +51,6 @@ class ForgetPassword:
 
     async def sendEmail(self, subject, template):
         try:
-            conf = ConnectionConfig(
-                MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
-                MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
-                MAIL_FROM=os.getenv('MAIL_FROM'),
-                MAIL_PORT=os.getenv('MAIL_PORT'),
-                MAIL_SERVER=os.getenv('MAIL_SERVER'),
-                MAIL_FROM_NAME=os.getenv('MAIL_FROM_NAME'),
-                MAIL_STARTTLS=True,
-                MAIL_SSL_TLS=False,
-            )
-
             template = env.get_template(f'{template}.html')
             html = template.render(code=self.code, first_name=self.name, subject=subject)
 
@@ -79,11 +58,10 @@ class ForgetPassword:
                 subject=subject, recipients=self.email, body=html, subtype='html'
             )
 
-            fm = FastMail(conf)
-
             await fm.send_message(message)
 
         except Exception as e:
+            print('Email error: ',e)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send forget password email"
@@ -104,17 +82,6 @@ class ContactAdminMail:
 
     async def sendMail(self, template):
         try:
-
-            conf = ConnectionConfig(
-                MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
-                MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
-                MAIL_FROM=os.getenv('MAIL_FROM'),
-                MAIL_PORT=os.getenv('MAIL_PORT'),
-                MAIL_SERVER=os.getenv('MAIL_SERVER'),
-                MAIL_FROM_NAME=os.getenv('MAIL_FROM_NAME'),
-                MAIL_STARTTLS=True,
-                MAIL_SSL_TLS=False,
-            )
             template = env.get_template(f'{template}.html')
 
             html = template.render(
@@ -128,11 +95,10 @@ class ContactAdminMail:
                 subject=self.subject, recipients=[self.admin_email], body=html, subtype='html'
             )
 
-            fm = FastMail(conf)
-
             await fm.send_message(message)
 
         except Exception as e:
+            print('Email error: ',e)
             raise HTTPException(
                 status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to send verification email"

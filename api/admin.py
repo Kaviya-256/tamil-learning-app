@@ -33,10 +33,9 @@ async def get_admin(admin = Depends(require_roles(['admin'], [user_collection]))
 @router.get('/api/admin/users')
 async def admin_dashboard(admin = Depends(require_roles(['admin'], [user_collection]))):
     
-    result=user_collection.find({}, {'name':1, 'progress':1, 'role':1, 'disabled':1, 'deleted':1})    
+    result=user_collection.find({'verified': True, 'disabled': False, 'deleted': False, 'role': 'user'}, {'name':1, 'progress':1, 'role':1})    
     user=[]
     async for doc in result:
-        if doc.get('role') != 'admin' and doc.get('disabled') is not True and doc.get('deleted') is not True:
             user.append({
                 'user_id': str(doc['_id']),
                 'name': doc.get('name'),
@@ -51,11 +50,10 @@ async def get_users_learners(
     user_id: str, 
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
-    result = profile_collection.find({'owner_id': user_id})
+    result = profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False, 'deleted': False})
     learners=[]
 
     async for doc in result:
-        if doc.get('role') != 'user' and doc.get('disabled') is not True and doc.get('deleted') is not True:
             learners.append({
                 'learner_id': str(doc['_id']),
                 'username': doc.get('username'),
@@ -75,7 +73,7 @@ async def list_lessons(admin = Depends(require_roles(['admin'], [user_collection
         'lesson_id': str(doc['_id']),
         'lesson_name': doc.get('lesson_name'),
         'modules_count': doc.get('modules_count')
-    }async for doc in lesson_collection.find()]
+    }async for doc in lesson_collection.find().sort({"_id":1})]
 
 # To add  new lessons
 @router.post('/api/admin/add-lesson')
@@ -108,7 +106,7 @@ async def lesson_modules(
         {
             'module_id': str(doc['_id']),
             'module_name': doc.get('module_name')}
-    async for doc in module_collection.find({'lesson_id': id})]
+    async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})]
 
 
 # To add modules to an existing lesson

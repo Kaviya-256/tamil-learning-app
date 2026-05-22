@@ -170,7 +170,7 @@ async def verify_email(otp_data: EmailSchema):
     )
 
     #send email
-    email_service = VerifyEmail(name='User', code=code, email=[otp_data.email])
+    email_service = VerifyEmail(name=existing_user.get('name'), code=code, email=[otp_data.email])
     
     await email_service.sendVerificationCode()
 
@@ -248,7 +248,7 @@ async def verify_email(otp_data: EmailSchema):
     )
 
     #send email
-    email_service = ForgetPassword(name='User', code=code, email=[otp_data.email])
+    email_service = ForgetPassword(name=record.get('name'), code=code, email=[otp_data.email])
     await email_service.sendVerificationCode()
 
     return {'message': "OTP sent successfully"}
