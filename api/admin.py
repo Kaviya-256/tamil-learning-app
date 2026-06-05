@@ -50,6 +50,11 @@ async def get_users_learners(
     user_id: str, 
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
+    
+    user = await user_collection.find_one({'_id': ObjectId(user_id)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
     result = profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False, 'deleted': False})
     learners=[]
 
@@ -81,6 +86,10 @@ async def add_lesson(
     lesson: LessonSchema,
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
+    result = await lesson_collection.find_one({'lesson_name': lesson.lesson_name})
+    if result:
+        raise HTTPException(status_code=409, detail="Lesson already exist")
+    
     data = {
         'lesson_name': lesson.lesson_name,
         'modules_count': 0
@@ -102,11 +111,21 @@ async def lesson_modules(
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    return [
+    # return [
+    #     {
+    #         'module_id': str(doc['_id']),
+    #         'module_name': doc.get('module_name')}
+    # async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})]
+
+    modules=[
         {
             'module_id': str(doc['_id']),
-            'module_name': doc.get('module_name')}
-    async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})]
+            'module_name': doc.get('module_name')
+        }async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})
+    ]
+    if not modules:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    return modules
 
 
 # To add modules to an existing lesson
@@ -120,6 +139,10 @@ async def add_modules(
         id = ObjectId(lesson_id)
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    lesson = await lesson_collection.find_one({'_id': id})
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
     
     data = module.model_dump()
 
@@ -179,6 +202,9 @@ async def update_lesson(
             '$set': {'lesson_name': lesson.lesson_name}
         }
     )
+    if not data:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    
     return {'message': 'lesson updated successfully'}
 
 
@@ -190,6 +216,10 @@ async def delete_lesson(lesson_id: str, admin = Depends(require_roles(['admin'],
         id = ObjectId(lesson_id)
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    lesson = await lesson_collection.find_one({'_id': id})
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
     
     await module_collection.delete_many({'lesson_id': id})
     await lesson_collection.delete_one({'_id': id})

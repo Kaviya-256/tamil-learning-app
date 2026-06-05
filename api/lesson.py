@@ -92,6 +92,10 @@ async def get_lesson_modules(
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid ID format")
     
+    lesson = await lesson_collection.find_one({'_id': id})
+    if not lesson:
+        raise HTTPException(status_code=409, detail="Lesson not found")
+    
     if user['role'] == 'user':
         user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
         if not user:
