@@ -2,6 +2,7 @@
 from pydantic import BaseModel, EmailStr, model_validator, field_validator, Field
 from typing import Optional
 import re
+from enum import Enum
 
 
 class LoginSchema(BaseModel):
@@ -81,12 +82,21 @@ class ResetPasswordSchema(EmailSchema):
         return v
 
 
+class ThemeColorEnum(str, Enum):
+    pink_rose = "from-pink-400 to-rose-500"
+    violet_purple = "from-violet-400 to-purple-500"
+    emerald_teal = "from-emerald-400 to-teal-500"
+    amber_orange = "from-amber-400 to-orange-500"
+    sky_blue = "from-sky-400 to-blue-500"
+    fuchsia_pink = "from-fuchsia-400 to-pink-500"
+
 class LearnerSchema(BaseModel):
     username: str
     name: str
     age: int = Field(..., ge=1, le=100)
     grade: str
     password: str
+    theme_color: ThemeColorEnum
 
     @field_validator('username')
     @classmethod
@@ -118,6 +128,7 @@ class LearnerUpdateSchema(BaseModel):
     age: int = Field(..., ge=1, le=100)
     grade: str
     password: Optional[str] = None
+    theme_color: ThemeColorEnum
 
     @field_validator('password')
     @classmethod
@@ -152,7 +163,7 @@ class ProfileSchema(BaseModel):
     city: str
     state: str
     country: str
-    age: int = Field(..., ge=1, le=100)
+    age: int = Field(..., ge=18, le=100)
 
 class ChangePasswordSchema(BaseModel):
     currentPassword: str

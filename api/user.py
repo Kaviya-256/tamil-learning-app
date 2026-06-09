@@ -3,7 +3,7 @@ from bson import ObjectId
 from datetime import datetime, timezone
 from bson.errors import InvalidId
 
-from schema import LearnerSchema, ProfileSchema, LearnerUpdateSchema
+from schema import LearnerSchema, ProfileSchema, LearnerUpdateSchema, ThemeColorEnum
 from database.mongo import profile_collection, user_collection
 from utils.role_auth import require_roles
 from utils.auth_utils import hash_password
@@ -33,7 +33,8 @@ async def add_learner(
                     'grade': learner.grade,
                     'password_str': learner.password,
                     'password': hash_password(learner.password),
-                    'deleted': False
+                    'deleted': False,
+                    'theme_color': learner.theme_color.name
                 }}
             )
             if result.matched_count==0:
@@ -58,6 +59,7 @@ async def add_learner(
         'password': hash_password(learner.password),
         'disabled': False,
         'deleted': False,
+        'theme_color': learner.theme_color.name,
         'created_at': datetime.now(timezone.utc)
     }
     result= await profile_collection.insert_one(data)
@@ -81,7 +83,8 @@ async def learners_list(user = Depends(require_roles(['user'], [user_collection]
             'age': doc.get('age'),
             'grade': doc.get('grade'),
             'progress': doc.get('progress'),
-            'password': doc.get('password_str')
+            'password': doc.get('password_str'),
+            'theme_color': getattr(ThemeColorEnum.__members__.get(doc.get('theme_color')), 'value', None)
         }
         async for doc in profile_collection.find({'owner_id': user_id, 'role': 'learner', 'disabled': False, 'deleted': False})
     ]
@@ -115,7 +118,8 @@ async def get_learner(
         'age': data['age'],
         'grade': data['grade'],
         'progress': data['progress'],
-        'password': data.get('password_str')
+        'password': data.get('password_str'),
+        'theme_color': getattr(ThemeColorEnum.__members__.get(data.get('theme_color')), 'value', None)
     }
 
 # editing a learner
@@ -133,7 +137,8 @@ async def edit_learner(
     update_data = {
         'name': learner.name,
         'age': learner.age,
-        'grade': learner.grade
+        'grade': learner.grade,
+        'theme_color': learner.theme_color.name
     }
     if learner.password:
         update_data.update({
