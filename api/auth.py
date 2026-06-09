@@ -50,6 +50,9 @@ async def signup_user(user: SignupSchema):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail = "Email is already registered"
             )
+        
+    if user.age < 18:
+        raise HTTPException(status_code=403, detail="Registration is not available for users under 18 years of age.")
     
     if user.password != user.passwordConfirm:
         raise HTTPException(

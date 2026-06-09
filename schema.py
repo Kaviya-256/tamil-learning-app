@@ -29,6 +29,7 @@ class SignupSchema(BaseModel):
     password: str
     passwordConfirm: str
     country: str
+    age: int = Field(..., ge=1, le=100)
 
     @field_validator('password')
     @classmethod
@@ -83,7 +84,7 @@ class ResetPasswordSchema(EmailSchema):
 class LearnerSchema(BaseModel):
     username: str
     name: str
-    age: int
+    age: int = Field(..., ge=1, le=100)
     grade: str
     password: str
 
@@ -114,7 +115,7 @@ class LearnerSchema(BaseModel):
     
 class LearnerUpdateSchema(BaseModel):
     name: str
-    age: int
+    age: int = Field(..., ge=1, le=100)
     grade: str
     password: Optional[str] = None
 
@@ -151,7 +152,7 @@ class ProfileSchema(BaseModel):
     city: str
     state: str
     country: str
-    age: int
+    age: int = Field(..., ge=1, le=100)
 
 class ChangePasswordSchema(BaseModel):
     currentPassword: str
