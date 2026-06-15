@@ -13,6 +13,7 @@ from jwt_auth import create_access_token, create_refresh_token
 from utils.role_auth import refresh_access_token
 from utils.verifyEmail import VerifyEmail, ForgetPassword, ContactAdminMail
 from utils.role_auth import require_roles
+from database.db_dependency import get_country_collection
 
 router = APIRouter()
 
@@ -386,6 +387,13 @@ async def change_password(pwd: ChangePasswordSchema, user = Depends(require_role
         return{'message': 'No changes made'}
     
     return {'message': 'Password updated'}
+
+@router.get('/api/country')
+async def get_countries(countries_col = Depends(get_country_collection)):
+    return [
+        {'country_name': doc.get('country_name')}
+        async for doc in countries_col.find()
+    ]
 
 
 # @router.post('/api/refresh')

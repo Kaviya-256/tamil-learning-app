@@ -17,6 +17,13 @@ LESSON_COLLECTION = 'lessons'
 MODULE_COLLECTION = 'modules'
 FEEDBACK_COLLECTION = 'feedbacks'
 
+GAME_COLLECTION = 'game_definitions'
+GAME_SESSION_COLLECTION = 'game_session'
+MODULE_GAME_MAP = 'module_game_map'
+USER_ROUND_ATTEMPTS = 'user_round_attempts'
+
+COUNTRY_COLLECTION = 'countries'
+
 
 client = AsyncIOMotorClient(MONGO_URI)
 
@@ -28,3 +35,10 @@ asset_collection = db[ASSET_COLLECTION]
 lesson_collection = db[LESSON_COLLECTION]
 module_collection = db[MODULE_COLLECTION]
 feedback_collection = db[FEEDBACK_COLLECTION]
+
+game_collection = db[GAME_COLLECTION]
+game_session_collection = db[GAME_SESSION_COLLECTION]
+module_game_map_collection = db[MODULE_GAME_MAP]
+user_round_attempts_collection = db[USER_ROUND_ATTEMPTS]
+
+country_collection = db[COUNTRY_COLLECTION]

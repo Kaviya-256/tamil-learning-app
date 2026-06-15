@@ -92,7 +92,9 @@ async def add_lesson(
     
     data = {
         'lesson_name': lesson.lesson_name,
-        'modules_count': 0
+        'modules_count': 0,
+        'games': [],
+        'games_count': 0
     }
     await lesson_collection.insert_one(data)
     return {
