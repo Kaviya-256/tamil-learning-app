@@ -1,20 +1,16 @@
 # admin.py
-from fastapi import APIRouter, HTTPException, status, UploadFile, File, Depends
-import uuid
-import os
-from bson import ObjectId
-import re
-from typing import Optional
-from bson.errors import InvalidId
+from fastapi import APIRouter, HTTPException, Depends
+# from bson import ObjectId
+# from bson.errors import InvalidId
 
-from schema import ModuleSchema, LessonSchema
 from database.mongo import user_collection, asset_collection, profile_collection, lesson_collection, module_collection, feedback_collection
 from utils.role_auth import require_roles
+from utils.validation import validate_object_id
 
-router = APIRouter()
+router = APIRouter(tags=["Admin User Management"])
 
-UPLOAD_DIR_IMAGE = 'asset/image'
-UPLOAD_DIR_AUDIO = 'asset/audio'
+# UPLOAD_DIR_IMAGE = 'asset/image'
+# UPLOAD_DIR_AUDIO = 'asset/audio'
 
 # Get admin
 @router.get('/api/admin')
@@ -51,7 +47,9 @@ async def get_users_learners(
     admin = Depends(require_roles(['admin'], [user_collection]))
 ):
     
-    user = await user_collection.find_one({'_id': ObjectId(user_id)})
+    id = validate_object_id(user_id)
+    
+    user = await user_collection.find_one({'_id': id})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -70,246 +68,246 @@ async def get_users_learners(
             
     return learners
 
-# Lessons that are present
-@router.get('/api/admin/lesson')
-async def list_lessons(admin = Depends(require_roles(['admin'], [user_collection]))):
+# # Lessons that are present
+# @router.get('/api/admin/lesson')
+# async def list_lessons(admin = Depends(require_roles(['admin'], [user_collection]))):
     
-    return [{
-        'lesson_id': str(doc['_id']),
-        'lesson_name': doc.get('lesson_name'),
-        'modules_count': doc.get('modules_count')
-    }async for doc in lesson_collection.find().sort({"_id":1})]
+#     return [{
+#         'lesson_id': str(doc['_id']),
+#         'lesson_name': doc.get('lesson_name'),
+#         'modules_count': doc.get('modules_count')
+#     }async for doc in lesson_collection.find().sort({"_id":1})]
 
-# To add  new lessons
-@router.post('/api/admin/add-lesson')
-async def add_lesson(
-    lesson: LessonSchema,
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):
-    result = await lesson_collection.find_one({'lesson_name': lesson.lesson_name})
-    if result:
-        raise HTTPException(status_code=409, detail="Lesson already exist")
+# # To add  new lessons
+# @router.post('/api/admin/add-lesson')
+# async def add_lesson(
+#     lesson: LessonSchema,
+#     admin = Depends(require_roles(['admin'], [user_collection]))
+# ):
+#     result = await lesson_collection.find_one({'lesson_name': lesson.lesson_name})
+#     if result:
+#         raise HTTPException(status_code=409, detail="Lesson already exist")
     
-    data = {
-        'lesson_name': lesson.lesson_name,
-        'modules_count': 0,
-        'games': [],
-        'games_count': 0
-    }
-    await lesson_collection.insert_one(data)
-    return {
-        'message': 'Lesson added'
-    }
+#     data = {
+#         'lesson_name': lesson.lesson_name,
+#         'modules_count': 0,
+#         'games': [],
+#         'games_count': 0
+#     }
+#     await lesson_collection.insert_one(data)
+#     return {
+#         'message': 'Lesson added'
+#     }
 
-# To get list of modules from a lesson
-@router.get('/api/admin/lesson/{lesson_id}')
-async def lesson_modules(
-    lesson_id: str,
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):    
+# # To get list of modules from a lesson
+# @router.get('/api/admin/lesson/{lesson_id}')
+# async def lesson_modules(
+#     lesson_id: str,
+#     admin = Depends(require_roles(['admin'], [user_collection]))
+# ):    
     
-    try:
-        id = ObjectId(lesson_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+#     try:
+#         id = ObjectId(lesson_id)
+#     except InvalidId:
+#         raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    # return [
-    #     {
-    #         'module_id': str(doc['_id']),
-    #         'module_name': doc.get('module_name')}
-    # async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})]
+#     # return [
+#     #     {
+#     #         'module_id': str(doc['_id']),
+#     #         'module_name': doc.get('module_name')}
+#     # async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})]
 
-    modules=[
-        {
-            'module_id': str(doc['_id']),
-            'module_name': doc.get('module_name')
-        }async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})
-    ]
-    if not modules:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    return modules
-
-
-# To add modules to an existing lesson
-@router.post('/api/admin/{lesson_id}/add-module')
-async def add_modules(
-    module: ModuleSchema, lesson_id: str,
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):
-    
-    try:
-        id = ObjectId(lesson_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-    
-    lesson = await lesson_collection.find_one({'_id': id})
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    
-    data = module.model_dump()
-
-    existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': id})
-
-    if existing_module:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Module already exist in this lesson"
-        )
-
-    asset = await asset_collection.find_one({'asset_name': module.module_name})
-    if asset is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Not found in asset, upload first"
-        )
-    
-    data.update({
-        'lesson_id': ObjectId(lesson_id),
-        'audio_path': asset['audio_path']
-    })
-    
-    await module_collection.insert_one(data)
-    
-
-    result=await lesson_collection.update_one(
-        {'_id':ObjectId(lesson_id)},
-        {
-            '$inc': {'modules_count': 1}
-        }
-    )
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Lesson not found"
-        )
-    return {
-        'message': 'Module added to lesson'
-    }
-
-# Update lesson name
-@router.put('/api/admin/{lesson_id}/update-lesson')
-async def update_lesson(
-    lesson: LessonSchema, lesson_id: str,
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):
-    
-    try:
-        id = ObjectId(lesson_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-    
-    data = await lesson_collection.find_one_and_update(
-        {'_id': id},
-        {
-            '$set': {'lesson_name': lesson.lesson_name}
-        }
-    )
-    if not data:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    
-    return {'message': 'lesson updated successfully'}
+#     modules=[
+#         {
+#             'module_id': str(doc['_id']),
+#             'module_name': doc.get('module_name')
+#         }async for doc in module_collection.find({'lesson_id': id}).sort({'_id':1})
+#     ]
+#     if not modules:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
+#     return modules
 
 
-# Deleting lesson
-@router.delete('/api/admin/{lesson_id}/delete-lesson')
-async def delete_lesson(lesson_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+# # To add modules to an existing lesson
+# @router.post('/api/admin/{lesson_id}/add-module')
+# async def add_modules(
+#     module: ModuleSchema, lesson_id: str,
+#     admin = Depends(require_roles(['admin'], [user_collection]))
+# ):
+    
+#     try:
+#         id = ObjectId(lesson_id)
+#     except InvalidId:
+#         raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+#     lesson = await lesson_collection.find_one({'_id': id})
+#     if not lesson:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
+    
+#     data = module.model_dump()
 
-    try:
-        id = ObjectId(lesson_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-    
-    lesson = await lesson_collection.find_one({'_id': id})
-    if not lesson:
-        raise HTTPException(status_code=404, detail="Lesson not found")
-    
-    await module_collection.delete_many({'lesson_id': id})
-    await lesson_collection.delete_one({'_id': id})
+#     existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': id})
 
-    return {'message': 'lesson deleted'}
+#     if existing_module:
+#         raise HTTPException(
+#             status_code=status.HTTP_409_CONFLICT,
+#             detail="Module already exist in this lesson"
+#         )
 
-# Deleting Module 
-@router.delete('/api/admin/lesson/{module_id}/delete-module')
-async def delete_module(module_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+#     asset = await asset_collection.find_one({'asset_name': module.module_name})
+#     if asset is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Not found in asset, upload first"
+#         )
+    
+#     data.update({
+#         'lesson_id': ObjectId(lesson_id),
+#         'audio_path': asset['audio_path']
+#     })
+    
+#     await module_collection.insert_one(data)
+    
 
-    try:
-        id = ObjectId(module_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
-    
-    module =  await module_collection.find_one({'_id':id})
-    if not module:
-        raise HTTPException(status_code=404, detail="Module not found")
-    
-    await module_collection.delete_one({'_id': id})
-    
-    await lesson_collection.update_one(
-        {'_id': module['lesson_id']},
-        {'$inc': {'modules_count': -1}}
-    )
+#     result=await lesson_collection.update_one(
+#         {'_id':ObjectId(lesson_id)},
+#         {
+#             '$inc': {'modules_count': 1}
+#         }
+#     )
+#     if result is None:
+#         raise HTTPException(
+#             status_code=status.HTTP_404_NOT_FOUND,
+#             detail="Lesson not found"
+#         )
+#     return {
+#         'message': 'Module added to lesson'
+#     }
 
-    return {'message': 'Module deleted'}
+# # Update lesson name
+# @router.put('/api/admin/{lesson_id}/update-lesson')
+# async def update_lesson(
+#     lesson: LessonSchema, lesson_id: str,
+#     admin = Depends(require_roles(['admin'], [user_collection]))
+# ):
+    
+#     try:
+#         id = ObjectId(lesson_id)
+#     except InvalidId:
+#         raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+#     data = await lesson_collection.find_one_and_update(
+#         {'_id': id},
+#         {
+#             '$set': {'lesson_name': lesson.lesson_name}
+#         }
+#     )
+#     if not data:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
+    
+#     return {'message': 'lesson updated successfully'}
 
-# Uploading Asset
-@router.post('/api/admin/asset/upload-asset')
-async def add_new_content(
-    asset_name: str,
-    image: Optional[UploadFile]=File(None),
-    audio: UploadFile=File(...),
-    admin = Depends(require_roles(['admin'], [user_collection]))
-):
-    asset = await asset_collection.find_one({'asset_name': asset_name})
-    if asset:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Asset alreay exist for {asset_name}"
-        )
 
-    audio_name=f'{asset_name}_{uuid.uuid4()}'
-    audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)    
+# # Deleting lesson
+# @router.delete('/api/admin/{lesson_id}/delete-lesson')
+# async def delete_lesson(lesson_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+#     try:
+#         id = ObjectId(lesson_id)
+#     except InvalidId:
+#         raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    with open(audio_path,'wb') as f:
-        f.write(await audio.read())
+#     lesson = await lesson_collection.find_one({'_id': id})
+#     if not lesson:
+#         raise HTTPException(status_code=404, detail="Lesson not found")
     
-    data={
-        'asset_name': asset_name,
-        'audio_path': audio_path
-    }
+#     await module_collection.delete_many({'lesson_id': id})
+#     await lesson_collection.delete_one({'_id': id})
+
+#     return {'message': 'lesson deleted'}
+
+# # Deleting Module 
+# @router.delete('/api/admin/lesson/{module_id}/delete-module')
+# async def delete_module(module_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
+
+#     try:
+#         id = ObjectId(module_id)
+#     except InvalidId:
+#         raise HTTPException(status_code=400, detail="Invalid ID format")
     
-    if image:
-        image_name=f'{asset_name}_{uuid.uuid4()}'
-        image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
-        with open(image_path,'wb') as f:
-            f.write(await image.read())
+#     module =  await module_collection.find_one({'_id':id})
+#     if not module:
+#         raise HTTPException(status_code=404, detail="Module not found")
+    
+#     await module_collection.delete_one({'_id': id})
+    
+#     await lesson_collection.update_one(
+#         {'_id': module['lesson_id']},
+#         {'$inc': {'modules_count': -1}}
+#     )
+
+#     return {'message': 'Module deleted'}
+
+# # Uploading Asset
+# @router.post('/api/admin/asset/upload-asset')
+# async def add_new_content(
+#     asset_name: str,
+#     image: Optional[UploadFile]=File(None),
+#     audio: UploadFile=File(...),
+#     admin = Depends(require_roles(['admin'], [user_collection]))
+# ):
+#     asset = await asset_collection.find_one({'asset_name': asset_name})
+#     if asset:
+#         raise HTTPException(
+#             status_code=status.HTTP_409_CONFLICT,
+#             detail=f"Asset alreay exist for {asset_name}"
+#         )
+
+#     audio_name=f'{asset_name}_{uuid.uuid4()}'
+#     audio_path=os.path.join(UPLOAD_DIR_AUDIO, audio_name)    
+    
+#     with open(audio_path,'wb') as f:
+#         f.write(await audio.read())
+    
+#     data={
+#         'asset_name': asset_name,
+#         'audio_path': audio_path
+#     }
+    
+#     if image:
+#         image_name=f'{asset_name}_{uuid.uuid4()}'
+#         image_path=os.path.join(UPLOAD_DIR_IMAGE, image_name)
+#         with open(image_path,'wb') as f:
+#             f.write(await image.read())
         
-        data.update({
-            'image_path': image_path
-        })    
+#         data.update({
+#             'image_path': image_path
+#         })    
     
-    await asset_collection.insert_one(data)
+#     await asset_collection.insert_one(data)
     
-    return {
-        'message':'asset added successfully'
-    }
+#     return {
+#         'message':'asset added successfully'
+#     }
 
-# Search asset
-@router.get('/api/admin/search-asset')
-async def search_asset(q: str='', admin = Depends(require_roles(['admin'], [user_collection]))):
-    if not q:
-        return {'results': []}
+# # Search asset
+# @router.get('/api/admin/search-asset')
+# async def search_asset(q: str='', admin = Depends(require_roles(['admin'], [user_collection]))):
+#     if not q:
+#         return {'results': []}
     
-    escaped=re.escape(q)
+#     escaped=re.escape(q)
 
-    cursor = asset_collection.find(
-        {'asset_name': {'$regex': f'^{escaped}'}},
-        {'asset_name':1, '_id':0}
-    ).collation({
-        'locale':'ta',
-        'strength':1
-    }).limit(20)
+#     cursor = asset_collection.find(
+#         {'asset_name': {'$regex': f'^{escaped}'}},
+#         {'asset_name':1, '_id':0}
+#     ).collation({
+#         'locale':'ta',
+#         'strength':1
+#     }).limit(20)
 
-    results=await cursor.to_list(length=20)
-    return {'results': [r['asset_name'] for r in results]}
+#     results=await cursor.to_list(length=20)
+#     return {'results': [r['asset_name'] for r in results]}
 
 # Getting feedback
 @router.get('/api/admin/feedback')
@@ -317,16 +315,16 @@ async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection
     feedback=[]
 
     async for doc in feedback_collection.find({}):
-        try:
-            learner = await profile_collection.find_one({'_id': ObjectId(doc.get('user_id'))})
-        except Exception:
-            continue
-        if learner is None:
-            continue
+        # try:
+        #     learner = await profile_collection.find_one({'_id': ObjectId(doc.get('user_id'))})
+        # except Exception:
+        #     continue
+        # if learner is None:
+        #     continue
 
         feedback.append({
             'id': str(doc['_id']),
-            'name': learner['name'],
+            'name': doc.get('name'),
             'rating': doc.get('rating'),
             'comments': doc.get('comments'),
             'admin_approved': doc.get('admin_approved')
@@ -337,10 +335,12 @@ async def get_feedback(admin = Depends(require_roles(['admin'], [user_collection
 # Approve Feedback
 @router.put('/api/admin/feedback/approve')
 async def approve_feedback(feedback_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
-    try:
-        id = ObjectId(feedback_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid id format")
+    # try:
+    #     id = ObjectId(feedback_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid id format")
+
+    id = validate_object_id(feedback_id)
     
     result = await feedback_collection.update_one(
         {'_id': id},
@@ -356,17 +356,19 @@ async def approve_feedback(feedback_id: str, admin = Depends(require_roles(['adm
 @router.patch('/api/admin/user/{user_id}/disable')
 async def disable_user(user_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
 
-    try:
-        id = ObjectId(user_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(user_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    id = validate_object_id(user_id)
     
     data=await profile_collection.update_many(
         {'owner_id': user_id},
         {'$set': {'disabled': True}}
     )
-    if data.matched_count==0:
-        raise HTTPException(status_code=404, detail="No profiles found for this user")
+    # if data.matched_count==0:
+    #     raise HTTPException(status_code=404, detail="No profiles found for this user")
     
     result= await user_collection.update_one(
         {'_id': id},
@@ -382,10 +384,12 @@ async def disable_user(user_id: str, admin = Depends(require_roles(['admin'], [u
 @router.patch('/api/admin/learner/{learner_id}/disable')
 async def disable_learner(learner_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
 
-    try:
-        id = ObjectId(learner_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(learner_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+    
+    id = validate_object_id(learner_id)
     
     result = await profile_collection.update_one(
         {'_id': id},
@@ -402,17 +406,19 @@ async def disable_learner(learner_id: str, admin = Depends(require_roles(['admin
 @router.delete('/api/admin/user/{user_id}/delete')
 async def delete_user(user_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
 
-    try:
-        id = ObjectId(user_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(user_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    id = validate_object_id(user_id)
     
     data=await profile_collection.update_many(
         {'owner_id': user_id},
         {'$set': {'deleted': True}}
     )
-    if data.matched_count==0:
-        raise HTTPException(status_code=404, detail="No profiles found for this user")
+    # if data.matched_count==0:
+    #     raise HTTPException(status_code=404, detail="No profiles found for this user")
     
     result= await user_collection.update_one(
         {'_id': id},
@@ -428,10 +434,12 @@ async def delete_user(user_id: str, admin = Depends(require_roles(['admin'], [us
 @router.delete('/api/admin/learner/{learner_id}/delete')
 async def delete_learner(learner_id: str, admin = Depends(require_roles(['admin'], [user_collection]))):
 
-    try:
-        id = ObjectId(learner_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(learner_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    id = validate_object_id(learner_id)
     
     result = await profile_collection.update_one(
         {'_id': id},

@@ -11,6 +11,7 @@ from database.mongo import module_collection, profile_collection, lesson_collect
 from utils.role_auth import require_roles
 from utils.progress import calculate_progress
 from schema import FeedbackSchema
+from utils.validation import validate_object_id
 
 router = APIRouter()
 security = HTTPBearer()
@@ -19,17 +20,26 @@ security = HTTPBearer()
 @router.get('/api/lessons')
 async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
 
-    if user['role'] == 'user':
-        user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
+    # if user['role'] == 'user':
+    #     user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
         
-    elif user['role'] == 'learner':
-        try:
-            id = ObjectId(user['id'])
-        except InvalidId:
-            raise HTTPException(status_code=400, detail="Invalid ID format")
+    # elif user['role'] == 'learner':
+    #     try:
+    #         id = ObjectId(user['id'])
+    #     except InvalidId:
+    #         raise HTTPException(status_code=400, detail="Invalid ID format")
         
-        user = await profile_collection.find_one({'_id':id})
+    #     user = await profile_collection.find_one({'_id':id})
 
+    # if not user:
+    #     raise HTTPException(status_code=404, detail="Profile not found")
+
+    user_id = ObjectId(user['id'])
+
+    if user['role'] == 'learner':
+        user = await profile_collection.find_one({'_id': user_id})
+    else:
+        user = await user_collection.find_one({'_id': user_id})
     if not user:
         raise HTTPException(status_code=404, detail="Profile not found")
 
@@ -87,25 +97,27 @@ async def get_lesson_modules(
     user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
     
-    try:
-        id = ObjectId(lesson_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(lesson_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    lesson_id = validate_object_id(lesson_id)
     
-    lesson = await lesson_collection.find_one({'_id': id})
+    lesson = await lesson_collection.find_one({'_id': lesson_id})
     if not lesson:
         raise HTTPException(status_code=409, detail="Lesson not found")
     
-    if user['role'] == 'user':
-        user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
-        if not user:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        user['id'] = str(user['_id'])
+    # if user['role'] == 'user':
+    #     user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
+    #     if not user:
+    #         raise HTTPException(status_code=404, detail="Profile not found")
+    #     user['id'] = str(user['_id'])
 
     return [{
         'module_id': str(doc['_id']),
         'module_name': doc.get('module_name')
-    } async for doc in module_collection.find({'lesson_id': id}).sort({"_id":1})]
+    } async for doc in module_collection.find({'lesson_id': lesson_id}).sort({"_id":1})]
 
 
 # Module info
@@ -115,19 +127,22 @@ async def get_module_data(
     user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
 
-    if user['role'] == 'user':
-        user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
-        if not user:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        user['id'] = str(user['_id'])
+    # if user['role'] == 'user':
+    #     user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
+    #     if not user:
+    #         raise HTTPException(status_code=404, detail="Profile not found")
+    #     user['id'] = str(user['_id'])
     
-    try:
-        id = ObjectId(module_id)
-        user_id = ObjectId(user['id'])
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(module_id)
+    #     user_id = ObjectId(user['id'])
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
 
-    module = await module_collection.find_one({'_id': id})
+    module_id = validate_object_id(module_id)
+    user_id = ObjectId(user.get('id'))
+
+    module = await module_collection.find_one({'_id': module_id})
 
     if module is None:
         raise HTTPException(
@@ -141,21 +156,54 @@ async def get_module_data(
     }
 
     if user['role'] != 'admin':
-        result = await profile_collection.find_one_and_update(
-            {'_id': user_id},
-            {
-                '$addToSet': {'lessons_attended': module['_id']}
-            },
-            return_document=ReturnDocument.AFTER
-        )
-        progress = await calculate_progress(len(result.get('lessons_attended',[])))
+        # result = await profile_collection.find_one_and_update(
+        #     {'_id': user_id},
+        #     {
+        #         '$addToSet': {'lessons_attended': module['_id']}
+        #     },
+        #     return_document=ReturnDocument.AFTER
+        # )
+        # progress = await calculate_progress(len(result.get('lessons_attended',[])))
 
-        await profile_collection.update_one(
-            {'_id': user_id},
-            {
-                '$set': {'progress': progress}
-            }
-        )
+        # await profile_collection.update_one(
+        #     {'_id': user_id},
+        #     {
+        #         '$set': {'progress': progress}
+        #     }
+        # )
+        if user['role'] == 'user':
+            result = await user_collection.find_one_and_update(
+                {'_id': user_id},
+                {
+                    '$addToSet': {'lessons_attended': module['_id']}
+                },
+                return_document=ReturnDocument.AFTER
+            )
+            progress = await calculate_progress(len(result.get('lessons_attended',[])))
+
+            await user_collection.update_one(
+                {'_id': user_id},
+                {
+                    '$set': {'progress': progress}
+                }
+            )
+
+        if user['role'] == 'learner':
+            result = await profile_collection.find_one_and_update(
+                {'_id': user_id},
+                {
+                    '$addToSet': {'lessons_attended': module['_id']}
+                },
+                return_document=ReturnDocument.AFTER
+            )
+            progress = await calculate_progress(len(result.get('lessons_attended',[])))
+
+            await profile_collection.update_one(
+                {'_id': user_id},
+                {
+                    '$set': {'progress': progress}
+                }
+            )
     
     return data
 
@@ -163,12 +211,14 @@ async def get_module_data(
 @router.get('/api/media/audio/{module_id}')
 async def get_audio(module_id: str, user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
 
-    try:
-        id = ObjectId(module_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(module_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    module_id = validate_object_id(module_id)
     
-    module = await module_collection.find_one({'_id': id})
+    module = await module_collection.find_one({'_id': module_id})
     if module is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -198,21 +248,21 @@ async def collect_feedback(
     user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
 ):
     
-    try:
-        id = ObjectId(user['id'])    
-    except:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid id"
-        )
+    # try:
+    #     id = ObjectId(user['id'])    
+    # except:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail="Invalid id"
+    #     )
     
-    if user['role'] == 'user':
-        user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
-    elif user['role'] == 'learner':
-        user = await profile_collection.find_one({'_id': id})
-    if not user:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    user['id'] = str(user['_id'])
+    # if user['role'] == 'user':
+    #     user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
+    # elif user['role'] == 'learner':
+    #     user = await profile_collection.find_one({'_id': id})
+    # if not user:
+    #     raise HTTPException(status_code=404, detail="Profile not found")
+    # user['id'] = str(user['_id'])
 
     
     result = await feedback_collection.update_one(

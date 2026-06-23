@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 from random import randint
 import os
 from bson import ObjectId
-from bson.errors import InvalidId
 
 from database.mongo import user_collection, profile_collection, otp_collection, feedback_collection
 from schema import SignupSchema, LoginSchema, EmailSchema, VerifyOTPSchema, ResetPasswordSchema, ChangePasswordSchema, ContactAdminSchema
@@ -42,7 +41,7 @@ async def signup_user(user: SignupSchema):
             )
             await profile_collection.update_many(
                 {'owner_id': str(existing_user['_id'])},
-                {'$set': {'deleted': False}}
+                {'$set': {'deleted': False, 'updated_at': datetime.now(timezone.utc)}}
             )
             return {'status': 'Success!'}
         
@@ -68,6 +67,8 @@ async def signup_user(user: SignupSchema):
     user_info.update({
         "role": "user",
         "verified": False,
+        'progress': 0,
+        'lessons_attended': [],
         "created_at": datetime.now(timezone.utc),
         "updated_at": datetime.now(timezone.utc),
         "password": hash_password(user.password),
@@ -76,17 +77,17 @@ async def signup_user(user: SignupSchema):
     })
     result = await user_collection.insert_one(user_info)
 
-    profile_data = {
-        'owner_id': str(result.inserted_id),
-        'name': user.name,
-        'email': user.email,
-        'role': 'user',
-        'progress': 0,
-        'lessons_attended': [],
-        'disabled': False,
-        'deleted': False
-    }
-    await profile_collection.insert_one(profile_data)
+    # profile_data = {
+    #     'owner_id': str(result.inserted_id),
+    #     'name': user.name,
+    #     'email': user.email,
+    #     'role': 'user',
+    #     'progress': 0,
+    #     'lessons_attended': [],
+    #     'disabled': False,
+    #     'deleted': False
+    # }
+    # await profile_collection.insert_one(profile_data)
     return {'status': 'Success!'}
 
 
@@ -209,16 +210,16 @@ async def verify_otp(otp_data: VerifyOTPSchema):
             '$set': {'otp_verified': True}
         }
     )
-    user= await user_collection.find_one({'email': otp_data.email})
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    await user_collection.find_one_and_update(
+    # user= await user_collection.find_one({'email': otp_data.email})
+    # if not user:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_404_NOT_FOUND,
+    #         detail="User not found"
+    #     )
+    result = await user_collection.update_one(
         {'email': otp_data.email},
         {
-            '$set': {'verified': True}
+            '$set': {'verified': True, 'updated_at': datetime.now(timezone.utc)}
         }
     )
     return {'message': 'Email Verified Successfully!'}
@@ -297,10 +298,10 @@ async def reset_password(pwd: ResetPasswordSchema):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password does not equal to old one"
         )
-    result = await user_collection.find_one_and_update(
+    result = await user_collection.update_one(
         {'email': pwd.email},
         {
-            '$set': {'password': hash_password(pwd.password)}
+            '$set': {'password': hash_password(pwd.password), 'updated_at': datetime.now(timezone.utc)}
         }
     )
 
@@ -342,10 +343,12 @@ async def contact_admin(contact: ContactAdminSchema):
 @router.patch('/api/change-password')
 async def change_password(pwd: ChangePasswordSchema, user = Depends(require_roles(['user', 'admin'], [user_collection]))):
 
-    try:
-        id = ObjectId(user['id'])
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(user['id'])
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    id = ObjectId(user['id'])
     
     data = await user_collection.find_one({'_id': id})
 
@@ -379,7 +382,7 @@ async def change_password(pwd: ChangePasswordSchema, user = Depends(require_role
     result = await user_collection.update_one(
         {'_id': id},
         {
-            '$set': {'password': hash_password(pwd.newPassword)}
+            '$set': {'password': hash_password(pwd.newPassword), 'updated_at': datetime.now(timezone.utc)}
         }
     )
 

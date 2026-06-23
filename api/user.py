@@ -7,6 +7,7 @@ from schema import LearnerSchema, ProfileSchema, LearnerUpdateSchema, ThemeColor
 from database.mongo import profile_collection, user_collection
 from utils.role_auth import require_roles
 from utils.auth_utils import hash_password
+from utils.validation import validate_object_id
 
 
 router = APIRouter()
@@ -24,7 +25,7 @@ async def add_learner(
         {'username': learner.username}
     )
     if existing_learner:
-        if existing_learner.get('deleted'):
+        if existing_learner.get('deleted') and existing_learner.get('owner_id') == user_id:
             result=await profile_collection.update_one(
                 {'username': learner.username},
                 {'$set': {
@@ -34,7 +35,9 @@ async def add_learner(
                     'password_str': learner.password,
                     'password': hash_password(learner.password),
                     'deleted': False,
-                    'theme_color': learner.theme_color.name
+                    'theme_color': learner.theme_color.name,
+                    'updated_at': datetime.now(timezone.utc),
+                    'updated_by': user_id
                 }}
             )
             if result.matched_count==0:
@@ -60,7 +63,10 @@ async def add_learner(
         'disabled': False,
         'deleted': False,
         'theme_color': learner.theme_color.name,
-        'created_at': datetime.now(timezone.utc)
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc),
+        'created_by': user_id,
+        'updated_by': user_id
     }
     result= await profile_collection.insert_one(data)
     if not result:
@@ -96,12 +102,14 @@ async def get_learner(
     user = Depends(require_roles(['user'], [user_collection]))
 ):
     
-    try:
-        id = ObjectId(learner_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(learner_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    learner_id = validate_object_id(learner_id)
     
-    data = await profile_collection.find_one({'_id': id, 'owner_id': user['id']})
+    data = await profile_collection.find_one({'_id': learner_id, 'owner_id': user['id']})
 
     if data is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -129,10 +137,12 @@ async def edit_learner(
     user = Depends(require_roles(['user'], [user_collection]))
 ):
     
-    try:
-        id = ObjectId(learner_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(learner_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    learner_id = validate_object_id(learner_id)
     
     update_data = {
         'name': learner.name,
@@ -147,7 +157,7 @@ async def edit_learner(
         })
     
     result = await profile_collection.find_one_and_update(
-        {'_id': id, 'owner_id': user['id']},
+        {'_id': learner_id, 'owner_id': user['id']},
         {
             '$set': update_data
         }
@@ -164,13 +174,15 @@ async def delete_learner(
     user = Depends(require_roles(['user'], [user_collection]))   
 ):
     
-    try:
-        id = ObjectId(learner_id)
-    except InvalidId:
-        raise HTTPException(status_code=400, detail="Invalid ID format")
+    # try:
+    #     id = ObjectId(learner_id)
+    # except InvalidId:
+    #     raise HTTPException(status_code=400, detail="Invalid ID format")
+
+    learner_id = validate_object_id(learner_id)
     
     result = await profile_collection.delete_one(
-        {'_id': id, 'owner_id': user['id']}
+        {'_id': learner_id, 'owner_id': user['id']}
     )
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Learner not found")
