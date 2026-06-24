@@ -136,11 +136,6 @@ async def edit_learner(
     learner: LearnerUpdateSchema,learner_id: str,
     user = Depends(require_roles(['user'], [user_collection]))
 ):
-    
-    # try:
-    #     id = ObjectId(learner_id)
-    # except InvalidId:
-    #     raise HTTPException(status_code=400, detail="Invalid ID format")
 
     learner_id = validate_object_id(learner_id)
     
@@ -173,11 +168,6 @@ async def delete_learner(
     learner_id: str,
     user = Depends(require_roles(['user'], [user_collection]))   
 ):
-    
-    # try:
-    #     id = ObjectId(learner_id)
-    # except InvalidId:
-    #     raise HTTPException(status_code=400, detail="Invalid ID format")
 
     learner_id = validate_object_id(learner_id)
     

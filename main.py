@@ -13,12 +13,18 @@ from games.api.games import router as games_router
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
+from fastapi.responses import JSONResponse
+import json
 
 load_dotenv()
+class UnicodeJSONResponse(JSONResponse):
+    def render(self, content)->bytes:
+        return json.dumps(content, ensure_ascii=False).encode('utf-8')
 
 app = FastAPI(
     title="Tamil Learning App",
-    description="API for tamil learning app"
+    description="API for tamil learning app",
+    default_response_class=UnicodeJSONResponse
 )
 
 origins= os.getenv("CORS_ORIGINS", "").split(",")

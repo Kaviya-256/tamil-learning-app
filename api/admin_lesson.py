@@ -4,6 +4,9 @@ import re
 import uuid
 from typing import Optional
 import os
+# import unicodedata
+from fastapi.responses import Response
+import json
 
 from utils.role_auth import require_roles
 from database.mongo import user_collection, lesson_collection, module_collection, asset_collection
@@ -67,8 +70,12 @@ async def lesson_modules(
             'module_name': doc.get('module_name')
         }async for doc in module_collection.find({'lesson_id': lesson_id}).sort({'_id':1})
     ]
-    if modules is None:
-        raise HTTPException(status_code=404, detail="Lesson not found")
+    # if modules:
+    #     raise HTTPException(status_code=404, detail="Lesson not found")
+    # return Response(
+    #     content= json.dumps(modules, ensure_ascii=False),
+    #     media_type='application/json; charset=utf-8'
+    # )
     return modules
 
 
@@ -87,6 +94,8 @@ async def add_modules(
         raise HTTPException(status_code=404, detail="Lesson not found")
     
     data = module.model_dump()
+    # text = unicodedata.normalize('NFC', data.get('module_name'))
+
 
     existing_module = await module_collection.find_one({'module_name': module.module_name, 'lesson_id': lesson_id})
 
@@ -107,6 +116,11 @@ async def add_modules(
         'lesson_id': lesson_id,
         'audio_path': asset['audio_path']
     })
+    # data = {
+    #     'module_name': text,
+    #     'lesson_id': lesson_id,
+    #     'audio_path': asset['audio_path']
+    # }
     inserted_module = await module_collection.insert_one(data)
 
     result=await lesson_collection.update_one(
@@ -115,7 +129,7 @@ async def add_modules(
             '$inc': {'modules_count': 1}
         }
     )
-    
+     
     # if result.get('games_count') != 0:
     #     games = result.get('games')
     #     for game in games:

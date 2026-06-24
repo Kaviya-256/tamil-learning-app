@@ -20,20 +20,6 @@ security = HTTPBearer()
 @router.get('/api/lessons')
 async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
 
-    # if user['role'] == 'user':
-    #     user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
-        
-    # elif user['role'] == 'learner':
-    #     try:
-    #         id = ObjectId(user['id'])
-    #     except InvalidId:
-    #         raise HTTPException(status_code=400, detail="Invalid ID format")
-        
-    #     user = await profile_collection.find_one({'_id':id})
-
-    # if not user:
-    #     raise HTTPException(status_code=404, detail="Profile not found")
-
     user_id = ObjectId(user['id'])
 
     if user['role'] == 'learner':
@@ -97,22 +83,11 @@ async def get_lesson_modules(
     user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
     
-    # try:
-    #     id = ObjectId(lesson_id)
-    # except InvalidId:
-    #     raise HTTPException(status_code=400, detail="Invalid ID format")
-
     lesson_id = validate_object_id(lesson_id)
     
     lesson = await lesson_collection.find_one({'_id': lesson_id})
     if not lesson:
         raise HTTPException(status_code=409, detail="Lesson not found")
-    
-    # if user['role'] == 'user':
-    #     user = await profile_collection.find_one({'owner_id': user['id'],'role':'user'})
-    #     if not user:
-    #         raise HTTPException(status_code=404, detail="Profile not found")
-    #     user['id'] = str(user['_id'])
 
     return [{
         'module_id': str(doc['_id']),
@@ -126,18 +101,6 @@ async def get_module_data(
     module_id: str,
     user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))
 ):
-
-    # if user['role'] == 'user':
-    #     user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
-    #     if not user:
-    #         raise HTTPException(status_code=404, detail="Profile not found")
-    #     user['id'] = str(user['_id'])
-    
-    # try:
-    #     id = ObjectId(module_id)
-    #     user_id = ObjectId(user['id'])
-    # except InvalidId:
-    #     raise HTTPException(status_code=400, detail="Invalid ID format")
 
     module_id = validate_object_id(module_id)
     user_id = ObjectId(user.get('id'))
@@ -156,21 +119,7 @@ async def get_module_data(
     }
 
     if user['role'] != 'admin':
-        # result = await profile_collection.find_one_and_update(
-        #     {'_id': user_id},
-        #     {
-        #         '$addToSet': {'lessons_attended': module['_id']}
-        #     },
-        #     return_document=ReturnDocument.AFTER
-        # )
-        # progress = await calculate_progress(len(result.get('lessons_attended',[])))
-
-        # await profile_collection.update_one(
-        #     {'_id': user_id},
-        #     {
-        #         '$set': {'progress': progress}
-        #     }
-        # )
+        
         if user['role'] == 'user':
             result = await user_collection.find_one_and_update(
                 {'_id': user_id},
@@ -211,10 +160,6 @@ async def get_module_data(
 @router.get('/api/media/audio/{module_id}')
 async def get_audio(module_id: str, user = Depends(require_roles(['user','learner', 'admin'], [user_collection, profile_collection]))):
 
-    # try:
-    #     id = ObjectId(module_id)
-    # except InvalidId:
-    #     raise HTTPException(status_code=400, detail="Invalid ID format")
 
     module_id = validate_object_id(module_id)
     
@@ -247,23 +192,6 @@ async def collect_feedback(
     feedback: FeedbackSchema,
     user = Depends(require_roles(['user','learner'], [user_collection, profile_collection]))
 ):
-    
-    # try:
-    #     id = ObjectId(user['id'])    
-    # except:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_400_BAD_REQUEST,
-    #         detail="Invalid id"
-    #     )
-    
-    # if user['role'] == 'user':
-    #     user = await profile_collection.find_one({'owner_id': user['id'], 'role': 'user'})
-    # elif user['role'] == 'learner':
-    #     user = await profile_collection.find_one({'_id': id})
-    # if not user:
-    #     raise HTTPException(status_code=404, detail="Profile not found")
-    # user['id'] = str(user['_id'])
-
     
     result = await feedback_collection.update_one(
         {'user_id': user['id']},
