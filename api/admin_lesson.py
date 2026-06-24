@@ -72,11 +72,11 @@ async def lesson_modules(
     ]
     # if modules:
     #     raise HTTPException(status_code=404, detail="Lesson not found")
-    # return Response(
-    #     content= json.dumps(modules, ensure_ascii=False),
-    #     media_type='application/json; charset=utf-8'
-    # )
-    return modules
+    return Response(
+        content= json.dumps(modules, ensure_ascii=False),
+        media_type='application/json; charset=utf-8'
+    )
+    # return modules
 
 
 # ------------------- To add modules to an existing lesson --------------------
