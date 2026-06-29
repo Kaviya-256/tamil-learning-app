@@ -69,12 +69,23 @@ async def get_lessons(user = Depends(require_roles(['user','learner', 'admin'], 
                 'module_name': module.get('module_name')
             }for module in doc.get('modules',[])]
         })
-
-    return {
+    
+    data = {
         'name': user.get('name'),
         'progress': user.get('progress',0),
         'lessons': lessons
     }
+
+    if user['role']!= 'admin':
+        data.update({
+            'lessons_attended': [
+                str(lesson_id)
+                for lesson_id in user.get('lessons_attended', [])
+            ]
+        })
+
+    return data
+
 
 # List of modules
 @router.get('/api/lesson/{lesson_id}')

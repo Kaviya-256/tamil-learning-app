@@ -7,8 +7,8 @@ from api.lesson import router as lesson_router
 from api.learner import router as learner_router
 from api.admin_lesson import router as admin_lesson_router
 
-from games.api.admin_games import router as admin_games_router
-from games.api.games import router as games_router
+# from games.api.admin_games import router as admin_games_router
+# from games.api.games import router as games_router
 
 from fastapi.middleware.cors import CORSMiddleware
 import os
