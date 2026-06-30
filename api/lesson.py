@@ -129,41 +129,41 @@ async def get_module_data(
         'audio': f"/api/media/audio/{module_id}"
     }
 
-    if user['role'] != 'admin':
+    # if user['role'] != 'admin':
         
-        if user['role'] == 'user':
-            result = await user_collection.find_one_and_update(
-                {'_id': user_id},
-                {
-                    '$addToSet': {'lessons_attended': module['_id']}
-                },
-                return_document=ReturnDocument.AFTER
-            )
-            progress = await calculate_progress(len(result.get('lessons_attended',[])))
+    if user['role'] == 'user' or user['role']=='admin':
+        result = await user_collection.find_one_and_update(
+            {'_id': user_id},
+            {
+                '$addToSet': {'lessons_attended': module['_id']}
+            },
+            return_document=ReturnDocument.AFTER
+        )
+        progress = await calculate_progress(len(result.get('lessons_attended',[])))
 
-            await user_collection.update_one(
-                {'_id': user_id},
-                {
-                    '$set': {'progress': progress}
-                }
-            )
+        await user_collection.update_one(
+            {'_id': user_id},
+            {
+                '$set': {'progress': progress}
+            }
+        )
 
-        if user['role'] == 'learner':
-            result = await profile_collection.find_one_and_update(
-                {'_id': user_id},
-                {
-                    '$addToSet': {'lessons_attended': module['_id']}
-                },
-                return_document=ReturnDocument.AFTER
-            )
-            progress = await calculate_progress(len(result.get('lessons_attended',[])))
+    elif user['role'] == 'learner':
+        result = await profile_collection.find_one_and_update(
+            {'_id': user_id},
+            {
+                '$addToSet': {'lessons_attended': module['_id']}
+            },
+            return_document=ReturnDocument.AFTER
+        )
+        progress = await calculate_progress(len(result.get('lessons_attended',[])))
 
-            await profile_collection.update_one(
-                {'_id': user_id},
-                {
-                    '$set': {'progress': progress}
-                }
-            )
+        await profile_collection.update_one(
+            {'_id': user_id},
+            {
+                '$set': {'progress': progress}
+            }
+        )
     
     return data
 
